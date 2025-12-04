@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Alerta Sudestada - River Height Monitor PWA
+
+A Progressive Web App (PWA) for monitoring river height with real-time flood alerts.
+
+## Features
+
+- 🌊 Real-time river height monitoring
+- 🚨 Flood alert system with multiple threshold levels
+- 📱 Progressive Web App - installable on mobile and desktop
+- 🔄 Auto-refresh every 30 seconds
+- 📊 Visual gauge showing current river level
+- 🎨 Modern, responsive UI
 
 ## Getting Started
 
-First, run the development server:
+First, install dependencies:
+
+```bash
+npm install
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## PWA Installation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### On Mobile:
+1. Open the app in your mobile browser
+2. Tap the menu (three dots) and select "Add to Home Screen" or "Install App"
+3. The app will be installed as a standalone application
+
+### On Desktop:
+1. Look for the install icon in your browser's address bar
+2. Click it to install the app
+3. The app will open in its own window
+
+## PWA Icons
+
+To complete the PWA setup, you need to add icon files:
+- `public/icon-192.png` (192x192 pixels)
+- `public/icon-512.png` (512x512 pixels)
+
+You can generate these icons using any image editor or online tool. The icons should represent the app (e.g., a river/wave icon).
+
+## API
+
+The app includes a mock API endpoint at `/api/river-height` that simulates river height data. In production, replace this with a real API endpoint that fetches actual river height data.
+
+### API Response Format:
+```json
+{
+  "height": 2.15,
+  "unit": "m",
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "location": "Río de la Plata - Puerto Buenos Aires",
+  "status": "normal"
+}
+```
+
+### Alert Thresholds:
+- **Normal**: < 2.5m
+- **Warning**: ≥ 2.5m
+- **Alert**: ≥ 3.0m
+- **Critical**: ≥ 3.5m
+
+## Building for Production
+
+```bash
+npm run build
+npm start
+```
+
+## Technologies
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS
+- next-pwa (Progressive Web App support)
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [PWA Documentation](https://web.dev/progressive-web-apps/)

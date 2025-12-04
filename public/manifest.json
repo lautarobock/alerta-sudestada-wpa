@@ -1,0 +1,25 @@
+{
+  "name": "Alerta Sudestada",
+  "short_name": "Alerta Sudestada",
+  "description": "Moonitoreo al nivel del río lujan con alertas de inundación",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0066cc",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
