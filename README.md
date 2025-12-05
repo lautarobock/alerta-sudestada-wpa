@@ -7,9 +7,22 @@ A Progressive Web App (PWA) for monitoring river height with real-time flood ale
 - 🌊 Real-time river height monitoring
 - 🚨 Flood alert system with multiple threshold levels
 - 📱 Progressive Web App - installable on mobile and desktop
-- 🔄 Auto-refresh every 30 seconds
+- 🔄 Auto-refresh every 30 seconds (when app is in foreground)
+- 🔔 Push notifications for critical alerts (when app is in background)
+- 📡 Background sync support for periodic updates
 - 📊 Visual gauge showing current river level
 - 🎨 Modern, responsive UI
+
+### Background Behavior
+
+The app is designed to work efficiently in both foreground and background:
+
+- **Foreground**: Updates every 30 seconds automatically
+- **Background**: 
+  - Uses Periodic Background Sync API (when supported) to check for updates periodically
+  - Sends push notifications when river height reaches alert or critical levels
+  - Automatically fetches latest data when app returns to foreground
+- **Notifications**: Users receive alerts when the river height status changes to "Alert" or "Critical"
 
 ## Getting Started
 
@@ -39,6 +52,18 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 2. Click it to install the app
 3. The app will open in its own window
 
+### Background Monitoring & Notifications
+
+After installing the app, you'll be prompted to allow notifications. Granting permission enables:
+- **Background monitoring**: The app can check for river height updates even when closed
+- **Critical alerts**: You'll receive notifications when the river reaches alert or critical levels
+- **Automatic updates**: When you reopen the app, it will immediately fetch the latest data
+
+**Note**: Background sync capabilities vary by browser and platform:
+- **Chrome/Edge**: Full support for Periodic Background Sync
+- **Firefox**: Limited background sync support
+- **Safari (iOS)**: Limited background capabilities, but notifications work
+
 ## PWA Icons
 
 To complete the PWA setup, you need to add icon files:
@@ -47,19 +72,52 @@ To complete the PWA setup, you need to add icon files:
 
 You can generate these icons using any image editor or online tool. The icons should represent the app (e.g., a river/wave icon).
 
-## API
+## MongoDB Setup
 
-The app includes a mock API endpoint at `/api/river-height` that simulates river height data. In production, replace this with a real API endpoint that fetches actual river height data.
+The app uses MongoDB to store and retrieve river height data. Follow these steps to set up your database:
 
-### API Response Format:
+### 1. Create a `.env.local` file
+
+Create a `.env.local` file in the root directory with your MongoDB connection string:
+
+```env
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
+```
+
+For local MongoDB:
+```env
+MONGODB_URI=mongodb://localhost:27017/alerta-sudestada
+```
+
+### 2. Database Collection Structure
+
+The app expects a collection named `tides` with documents in the following format:
+
 ```json
 {
-  "height": 2.15,
-  "unit": "m",
-  "timestamp": "2024-01-01T12:00:00.000Z",
-  "location": "Río de la Plata - Puerto Buenos Aires",
-  "status": "normal"
+  "moment": "2024-01-01T12:00:00.000Z",
+  "reading": 2.15,
+  "astronomical": 2.10
 }
+```
+
+Where:
+- `moment`: Date - The timestamp of the reading
+- `reading`: number - The actual measured height (in meters)
+- `astronomical`: number - The expected/astronomical height (in meters)
+
+The app will automatically:
+- Fetch the most recent reading (sorted by `moment` descending)
+- Use the `reading` field for the displayed height value
+- Calculate the alert status based on the reading height
+- Display the data with appropriate visual indicators
+
+### 3. Database Configuration
+
+You can customize the database name in `src/app/actions/riverHeight.ts`:
+
+```typescript
+const db = client.db('your-database-name'); // Change if needed
 ```
 
 ### Alert Thresholds:
@@ -81,6 +139,7 @@ npm start
 - React 19
 - TypeScript
 - Tailwind CSS
+- MongoDB
 - next-pwa (Progressive Web App support)
 
 ## Learn More

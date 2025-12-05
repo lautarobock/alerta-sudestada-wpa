@@ -1,7 +1,10 @@
+import { getRiverHeight } from "@/app/actions/riverHeight";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import FloodAlerts from "@/components/FloodAlerts";
 
-export default function Home() {
+export default async function Home() {
+  const initialData = await getRiverHeight();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       <main className="container mx-auto px-4 py-8 max-w-4xl">
@@ -17,7 +20,7 @@ export default function Home() {
 
         {/* Main Content */}
         <div className="space-y-8">
-          <RiverHeightDisplay />
+          <RiverHeightDisplay initialData={initialData} />
           <FloodAlerts />
         </div>
 
