@@ -40,6 +40,11 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0066cc" />
+        {/* Apple iOS PWA icons */}
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Alerta Sudestada" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
