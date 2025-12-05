@@ -1,6 +1,7 @@
 import { getRiverHeight } from "@/app/actions/riverHeight";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import FloodAlerts from "@/components/FloodAlerts";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 export default async function Home() {
   const initialData = await getRiverHeight();
@@ -30,6 +31,9 @@ export default async function Home() {
           <p className="mt-2">Instala esta app en tu dispositivo para recibir notificaciones</p>
         </footer>
       </main>
+      
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
     </div>
   );
 }
