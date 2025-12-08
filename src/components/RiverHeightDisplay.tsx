@@ -92,7 +92,7 @@ export default function RiverHeightDisplay({
                         warning: "Advertencia",
                         normal: "Normal"
                     };
-                    showAlertNotification(
+                    await showAlertNotification(
                         `🚨 ${statusLabels[riverData.status]} - Río Luján`,
                         `El nivel del río ha alcanzado ${riverData.height}m. Estado: ${statusLabels[riverData.status]}`,
                         { height: riverData.height, status: riverData.status }
