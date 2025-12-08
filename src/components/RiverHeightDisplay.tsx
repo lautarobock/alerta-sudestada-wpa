@@ -329,7 +329,7 @@ export default function RiverHeightDisplay({
 
             {/* Historical Chart */}
             {historicalData && historicalData.data && historicalData.data.length > 0 && (
-                <TideChart data={historicalData.data} />
+                <TideChart data={historicalData.data} forecast={forecast} />
             )}
 
             {/* Info Card */}
