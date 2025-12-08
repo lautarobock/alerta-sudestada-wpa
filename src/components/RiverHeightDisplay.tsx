@@ -84,8 +84,7 @@ export default function RiverHeightDisplay({
                 }
                 
                 // Check if status changed to alert/critical and show notification
-                if (previousStatusRef.current && 
-                    previousStatusRef.current !== riverData.status &&
+                if (
                     (riverData.status === "alert" || riverData.status === "critical")) {
                     const statusLabels = {
                         alert: "Alerta",
