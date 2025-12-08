@@ -106,11 +106,56 @@ export default function TideChart({ data, forecast }: TideChartProps) {
                             borderRadius: '8px',
                             padding: '8px'
                         }}
-                        formatter={(value: any) => {
-                            if (value === null || value === undefined || typeof value !== 'number') {
+                        content={({ active, payload }) => {
+                            if (!active || !payload || payload.length === 0) {
                                 return null;
                             }
-                            return [`${value.toFixed(2)} m`, ''];
+                            
+                            const data = payload[0].payload as ChartDataPoint;
+                            const items: Array<{ name: string; value: string; color: string }> = [];
+                            
+                            if (data.reading !== undefined && data.reading !== null) {
+                                items.push({
+                                    name: 'Lectura',
+                                    value: `${data.reading.toFixed(2)} m`,
+                                    color: '#3b82f6'
+                                });
+                            }
+                            
+                            if (data.astronomical !== undefined && data.astronomical !== null) {
+                                items.push({
+                                    name: 'Astronómica',
+                                    value: `${data.astronomical.toFixed(2)} m`,
+                                    color: '#10b981'
+                                });
+                            }
+                            
+                            if (data.forecast !== undefined && data.forecast !== null) {
+                                const modeLabel = data.forecastMode === 'high' ? 'Pleamar' : 'Bajamar';
+                                items.push({
+                                    name: `Pronóstico (${modeLabel})`,
+                                    value: `${data.forecast.toFixed(2)} m`,
+                                    color: data.forecastMode === 'high' ? '#f59e0b' : '#8b5cf6'
+                                });
+                            }
+                            
+                            if (items.length === 0) return null;
+                            
+                            return (
+                                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
+                                    <p className="text-sm font-semibold text-gray-700 mb-2">{data.time}</p>
+                                    {items.map((item, index) => (
+                                        <div key={index} className="flex items-center gap-2 mb-1">
+                                            <div 
+                                                className="w-3 h-3 rounded-full" 
+                                                style={{ backgroundColor: item.color }}
+                                            />
+                                            <span className="text-sm text-gray-600">{item.name}:</span>
+                                            <span className="text-sm font-semibold text-gray-800">{item.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
                         }}
                     />
                     <Legend />
