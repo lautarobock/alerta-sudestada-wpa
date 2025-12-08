@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition, useRef } from "react";
-import { getRiverHeight, type RiverHeightData } from "@/app/actions/riverHeight";
+import { getRiverHeight, getForecast, type RiverHeightData } from "@/app/actions/riverHeight";
+import { ForecastType, type ForecastData, type Forecast } from "@/types/forecast";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { 
   registerPeriodicSync, 
@@ -44,8 +45,15 @@ const STATUS_CONFIG = {
     },
 };
 
-export default function RiverHeightDisplay({ initialData }: { initialData?: RiverHeightData | null }) {
+export default function RiverHeightDisplay({ 
+    initialData,
+    initialForecast 
+}: { 
+    initialData?: RiverHeightData | null;
+    initialForecast?: ForecastData | null;
+}) {
     const [data, setData] = useState<RiverHeightData | null>(initialData || null);
+    const [forecast, setForecast] = useState<ForecastData | null>(initialForecast || null);
     const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
     const [lastUpdate, setLastUpdate] = useState<Date | null>(initialData?.timestamp ? new Date(initialData.timestamp) : null);
@@ -61,7 +69,11 @@ export default function RiverHeightDisplay({ initialData }: { initialData?: Rive
         startTransition(async () => {
             try {
                 setError(null);
-                const riverData = await getRiverHeight();
+                const [riverData, forecastData] = await Promise.all([
+                    getRiverHeight(),
+                    getForecast()
+                ]);
+                
                 if (!riverData) {
                     throw new Error("No se encontraron datos");
                 }
@@ -85,6 +97,7 @@ export default function RiverHeightDisplay({ initialData }: { initialData?: Rive
                 
                 previousStatusRef.current = riverData.status;
                 setData(riverData);
+                setForecast(forecastData);
                 const now = new Date();
                 setLastUpdate(now);
                 setTimeSinceUpdate(0);
@@ -243,6 +256,70 @@ export default function RiverHeightDisplay({ initialData }: { initialData?: Rive
                     </div>
                 </div>
             </div>
+
+            {/* Forecast Card */}
+            {forecast && forecast.values && forecast.values.length > 0 && (() => {
+
+                const formatFullDate = (date: Date) => {
+                    return date.toLocaleString("es-AR", {
+                        weekday: "short",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone: "America/Argentina/Buenos_Aires",
+                    });
+                };
+
+                // Sort forecasts by date
+                const sortedForecasts = [...forecast.values].sort((a, b) => {
+                    return new Date(a.date).getTime() - new Date(b.date).getTime();
+                });
+                
+                return (
+                    <div className="p-6 bg-white rounded-xl border-2 border-blue-200 shadow-lg">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-4">Pronóstico de Mareas</h2>
+                        <div className="space-y-3">
+                            {sortedForecasts.map((forecastItem, index) => {
+                                const isHigh = forecastItem.mode === ForecastType.HIGH;
+                                const bgColor = isHigh ? "bg-blue-50" : "bg-cyan-50";
+                                const borderColor = isHigh ? "border-blue-200" : "border-cyan-200";
+                                const textColor = isHigh ? "text-blue-800" : "text-cyan-800";
+                                const valueColor = isHigh ? "text-blue-900" : "text-cyan-900";
+                                const unitColor = isHigh ? "text-blue-700" : "text-cyan-700";
+                                const dateColor = isHigh ? "text-blue-600" : "text-cyan-600";
+                                const icon = isHigh ? "📈" : "📉";
+                                const label = isHigh ? "Pleamar" : "Bajamar";
+                                
+                                return (
+                                    <div 
+                                        key={index}
+                                        className={`p-4 ${bgColor} rounded-lg border ${borderColor}`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-2xl">{icon}</span>
+                                                <div>
+                                                    <h3 className={`font-semibold ${textColor}`}>{label}</h3>
+                                                    <p className={`text-sm ${dateColor} mt-1`}>
+                                                        {formatFullDate(new Date(forecastItem.date))}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className={`text-2xl font-bold ${valueColor}`}>
+                                                    {forecastItem.value.toFixed(2)}
+                                                </span>
+                                                <span className={`text-lg ${unitColor}`}>m</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Info Card */}
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">

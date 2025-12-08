@@ -1,6 +1,7 @@
 'use server';
 
 import clientPromise from '@/lib/mongodb';
+import type { ForecastData, Forecast, ForecastType } from '@/types/forecast';
 
 export interface RiverHeightData {
     height: number;
@@ -58,6 +59,39 @@ export async function getRiverHeight(): Promise<RiverHeightData | null> {
         };
     } catch (error) {
         console.error('Error fetching river height from MongoDB:', error);
+        return null;
+    }
+}
+
+export async function getForecast(): Promise<ForecastData | null> {
+    try {
+        const client = await clientPromise;
+        const db = client.db('alerta-sudestada');
+        const collection = db.collection('forecast');
+        
+        // Get the most recent forecast by moment (Date)
+        const latestForecast = await collection
+            .findOne({}, { sort: { moment: -1 } });
+        
+        if (!latestForecast) {
+            return null;
+        }
+        
+        // Convert the forecast data, ensuring dates are properly converted
+        const values: Forecast[] = (latestForecast.values || []).map((f: any) => ({
+            date: f.date instanceof Date ? f.date : new Date(f.date),
+            mode: f.mode as ForecastType,
+            value: f.value
+        }));
+        
+        return {
+            moment: latestForecast.moment instanceof Date 
+                ? latestForecast.moment 
+                : new Date(latestForecast.moment),
+            values
+        };
+    } catch (error) {
+        console.error('Error fetching forecast from MongoDB:', error);
         return null;
     }
 }

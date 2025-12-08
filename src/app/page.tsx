@@ -1,10 +1,13 @@
-import { getRiverHeight } from "@/app/actions/riverHeight";
+import { getRiverHeight, getForecast } from "@/app/actions/riverHeight";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import FloodAlerts from "@/components/FloodAlerts";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 export default async function Home() {
-  const initialData = await getRiverHeight();
+  const [initialData, initialForecast] = await Promise.all([
+    getRiverHeight(),
+    getForecast()
+  ]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
@@ -21,7 +24,7 @@ export default async function Home() {
 
         {/* Main Content */}
         <div className="space-y-8">
-          <RiverHeightDisplay initialData={initialData} />
+          <RiverHeightDisplay initialData={initialData} initialForecast={initialForecast} />
           <FloodAlerts />
         </div>
 
