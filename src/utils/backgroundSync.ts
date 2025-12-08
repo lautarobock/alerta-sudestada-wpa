@@ -57,8 +57,9 @@ export async function requestNotificationPermission(): Promise<boolean> {
 
 /**
  * Show a notification for critical river height alerts
+ * Uses ServiceWorkerRegistration.showNotification() as required for PWAs
  */
-export function showAlertNotification(
+export async function showAlertNotification(
   title: string,
   body: string,
   data?: { height: number; status: string }
@@ -67,24 +68,48 @@ export function showAlertNotification(
     return;
   }
 
-  const notification = new Notification(title, {
-    body,
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
-    tag: "river-alert", // Replace previous notifications with same tag
-    requireInteraction: true, // Keep notification until user interacts
-    data,
-  });
+  // Use ServiceWorkerRegistration.showNotification() as required for PWAs
+  if ("serviceWorker" in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification(title, {
+        body,
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        tag: "river-alert", // Replace previous notifications with same tag
+        requireInteraction: true, // Keep notification until user interacts
+        data,
+      });
+      return;
+    } catch (error) {
+      console.error("Failed to show notification via service worker:", error);
+      // Fall through to fallback
+    }
+  }
 
-  // Close notification after 10 seconds
-  setTimeout(() => {
-    notification.close();
-  }, 10000);
+  // Fallback: Use Notification constructor only if service worker is not available
+  try {
+    const notification = new Notification(title, {
+      body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: "river-alert",
+      requireInteraction: true,
+      data,
+    });
 
-  // Handle click to focus the app
-  notification.onclick = () => {
-    window.focus();
-    notification.close();
-  };
+    // Close notification after 10 seconds
+    setTimeout(() => {
+      notification.close();
+    }, 10000);
+
+    // Handle click to focus the app
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  } catch (error) {
+    console.error("Failed to show notification:", error);
+  }
 }
 
