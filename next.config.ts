@@ -35,8 +35,6 @@ export default withPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
-  // Add build ID to service worker to avoid conflicts
-  buildExcludes: [/middleware-manifest\.json$/],
   // Disable service worker in development
   sw: process.env.NODE_ENV === "development" ? undefined : "sw.js",
 })(nextConfig);
