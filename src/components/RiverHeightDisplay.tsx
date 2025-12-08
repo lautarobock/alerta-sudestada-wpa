@@ -66,9 +66,9 @@ export default function RiverHeightDisplay({
     const [isMounted, setIsMounted] = useState(false);
     const [formattedTimestamp, setFormattedTimestamp] = useState<string>("");
     const isVisible = usePageVisibility();
-    const previousStatusRef = useRef<RiverHeightData["status"] | null>(null);
+    const previousStatusRef = useRef<RiverHeightData["status"] | null>(initialData?.status || null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
-    console.log('ROOT previousStatusRef.current', previousStatusRef.current);
+
     const fetchData = async () => {
         startTransition(async () => {
             try {
@@ -83,20 +83,16 @@ export default function RiverHeightDisplay({
                     throw new Error("No se encontraron datos");
                 }
                 
-                console.log('previousStatusRef.current', previousStatusRef.current);
-                console.log('riverData.status', riverData.status);
                 // Check if status changed to alert/critical and show notification
-                if ((!previousStatusRef.current ||
-                    previousStatusRef.current !== riverData.status) &&
+                if (
                     (riverData.status === "alert" || riverData.status === "critical")) {
-                    console.log('showing notification');
                     const statusLabels = {
                         alert: "Alerta",
                         critical: "Crítico",
                         warning: "Advertencia",
                         normal: "Normal"
                     };
-                    await showAlertNotification(
+                    showAlertNotification(
                         `🚨 ${statusLabels[riverData.status]} - Río Luján`,
                         `El nivel del río ha alcanzado ${riverData.height}m. Estado: ${statusLabels[riverData.status]}`,
                         { height: riverData.height, status: riverData.status }
