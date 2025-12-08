@@ -25,7 +25,7 @@ export interface HistoricalTideData {
 const THRESHOLDS = {
     normal: 0,
     warning: 0.5,
-    alert: 1.0,
+    alert: 0.8,
     critical: 3.5,
 };
 
