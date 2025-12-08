@@ -3,6 +3,8 @@
   "short_name": "Alerta Sudestada",
   "description": "Moonitoreo al nivel del río lujan con alertas de inundación",
   "start_url": "/",
+  "id": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0066cc",

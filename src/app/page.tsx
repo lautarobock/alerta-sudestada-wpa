@@ -1,12 +1,13 @@
-import { getRiverHeight, getForecast } from "@/app/actions/riverHeight";
+import { getRiverHeight, getForecast, getHistoricalTideData } from "@/app/actions/riverHeight";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import FloodAlerts from "@/components/FloodAlerts";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 export default async function Home() {
-  const [initialData, initialForecast] = await Promise.all([
+  const [initialData, initialForecast, initialHistoricalData] = await Promise.all([
     getRiverHeight(),
-    getForecast()
+    getForecast(),
+    getHistoricalTideData()
   ]);
 
   return (
@@ -24,7 +25,11 @@ export default async function Home() {
 
         {/* Main Content */}
         <div className="space-y-8">
-          <RiverHeightDisplay initialData={initialData} initialForecast={initialForecast} />
+          <RiverHeightDisplay 
+            initialData={initialData} 
+            initialForecast={initialForecast}
+            initialHistoricalData={initialHistoricalData}
+          />
           <FloodAlerts />
         </div>
 

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useTransition, useRef } from "react";
-import { getRiverHeight, getForecast, type RiverHeightData } from "@/app/actions/riverHeight";
+import { getRiverHeight, getForecast, getHistoricalTideData, type RiverHeightData, type HistoricalTideData } from "@/app/actions/riverHeight";
 import { ForecastType, type ForecastData, type Forecast } from "@/types/forecast";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
+import TideChart from "@/components/TideChart";
 import { 
   registerPeriodicSync, 
   requestNotificationPermission, 
@@ -47,13 +48,16 @@ const STATUS_CONFIG = {
 
 export default function RiverHeightDisplay({ 
     initialData,
-    initialForecast 
+    initialForecast,
+    initialHistoricalData
 }: { 
     initialData?: RiverHeightData | null;
     initialForecast?: ForecastData | null;
+    initialHistoricalData?: HistoricalTideData | null;
 }) {
     const [data, setData] = useState<RiverHeightData | null>(initialData || null);
     const [forecast, setForecast] = useState<ForecastData | null>(initialForecast || null);
+    const [historicalData, setHistoricalData] = useState<HistoricalTideData | null>(initialHistoricalData || null);
     const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
     const [lastUpdate, setLastUpdate] = useState<Date | null>(initialData?.timestamp ? new Date(initialData.timestamp) : null);
@@ -69,9 +73,10 @@ export default function RiverHeightDisplay({
         startTransition(async () => {
             try {
                 setError(null);
-                const [riverData, forecastData] = await Promise.all([
+                const [riverData, forecastData, historicalTideData] = await Promise.all([
                     getRiverHeight(),
-                    getForecast()
+                    getForecast(),
+                    getHistoricalTideData()
                 ]);
                 
                 if (!riverData) {
@@ -98,6 +103,7 @@ export default function RiverHeightDisplay({
                 previousStatusRef.current = riverData.status;
                 setData(riverData);
                 setForecast(forecastData);
+                setHistoricalData(historicalTideData);
                 const now = new Date();
                 setLastUpdate(now);
                 setTimeSinceUpdate(0);
@@ -320,6 +326,11 @@ export default function RiverHeightDisplay({
                     </div>
                 );
             })()}
+
+            {/* Historical Chart */}
+            {historicalData && historicalData.data && historicalData.data.length > 0 && (
+                <TideChart data={historicalData.data} />
+            )}
 
             {/* Info Card */}
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
