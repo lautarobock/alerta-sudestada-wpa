@@ -52,6 +52,7 @@ export default function RiverHeightDisplay({ initialData }: { initialData?: Rive
     const [timeSinceUpdate, setTimeSinceUpdate] = useState<number>(0);
     const [isPending, startTransition] = useTransition();
     const [isMounted, setIsMounted] = useState(false);
+    const [formattedTimestamp, setFormattedTimestamp] = useState<string>("");
     const isVisible = usePageVisibility();
     const previousStatusRef = useRef<RiverHeightData["status"] | null>(initialData?.status || null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -136,6 +137,21 @@ export default function RiverHeightDisplay({ initialData }: { initialData?: Rive
         };
     }, [isVisible]);
 
+    // Update formatted timestamp when data changes (only on client)
+    useEffect(() => {
+        if (!isMounted || !data?.timestamp) return;
+        
+        const date = new Date(data.timestamp);
+        setFormattedTimestamp(date.toLocaleString("es-AR", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "America/Argentina/Buenos_Aires",
+        }));
+    }, [isMounted, data?.timestamp]);
+
     // Update time since update counter every second (only on client)
     useEffect(() => {
         if (!isMounted || !lastUpdate) return;
@@ -172,22 +188,6 @@ export default function RiverHeightDisplay({ initialData }: { initialData?: Rive
     }
 
     const config = STATUS_CONFIG[data.status];
-
-    // Format timestamp in a way that's consistent between server and client
-    const formatTimestamp = (timestamp: string) => {
-        const date = new Date(timestamp);
-        // Use a consistent format that works the same on server and client
-        return date.toLocaleString("es-AR", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "America/Argentina/Buenos_Aires",
-        });
-    };
-
-    const updateTime = formatTimestamp(data.timestamp);
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-6">
@@ -248,7 +248,9 @@ export default function RiverHeightDisplay({ initialData }: { initialData?: Rive
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Última actualización:</span>
-                    <span className="font-medium text-gray-800">{updateTime}</span>
+                    <span className="font-medium text-gray-800">
+                        {isMounted ? formattedTimestamp : "Cargando..."}
+                    </span>
                 </div>
                 {isMounted && (
                     <div className="flex items-center justify-between text-sm mt-2">
