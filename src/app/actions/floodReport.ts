@@ -52,12 +52,12 @@ async function getNearestTideReading(targetTimestamp: Date): Promise<{ height: n
     }
 
     // Both readings exist, find the closest one
-    const beforeTime = beforeReading.moment instanceof Date 
-      ? beforeReading.moment.getTime() 
-      : new Date(beforeReading.moment).getTime();
-    const afterTime = afterReading.moment instanceof Date 
-      ? afterReading.moment.getTime() 
-      : new Date(afterReading.moment).getTime();
+    const beforeTime = beforeReading!.moment instanceof Date 
+      ? beforeReading!.moment.getTime() 
+      : new Date(beforeReading!.moment).getTime();
+    const afterTime = afterReading!.moment instanceof Date 
+      ? afterReading!.moment.getTime() 
+      : new Date(afterReading!.moment).getTime();
     const targetTime = targetTimestamp.getTime();
 
     const beforeDiff = Math.abs(targetTime - beforeTime);
@@ -65,13 +65,13 @@ async function getNearestTideReading(targetTimestamp: Date): Promise<{ height: n
 
     if (beforeDiff <= afterDiff) {
       return {
-        height: beforeReading.value ?? 0,
-        timestamp: beforeReading.moment instanceof Date ? beforeReading.moment : new Date(beforeReading.moment),
+        height: beforeReading!.value ?? 0,
+        timestamp: beforeReading!.moment instanceof Date ? beforeReading!.moment : new Date(beforeReading!.moment),
       };
     } else {
       return {
-        height: afterReading.value ?? 0,
-        timestamp: afterReading.moment instanceof Date ? afterReading.moment : new Date(afterReading.moment),
+        height: afterReading!.value ?? 0,
+        timestamp: afterReading!.moment instanceof Date ? afterReading!.moment : new Date(afterReading!.moment),
       };
     }
   } catch (error) {
