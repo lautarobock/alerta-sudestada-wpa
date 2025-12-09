@@ -1,5 +1,19 @@
 import type { AnalyticsEvent } from '@/types/analytics';
 
+// Check if we're running on localhost
+function isLocalhost(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  const hostname = window.location.hostname;
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.') ||
+    hostname.endsWith('.local')
+  );
+}
+
 // Generate or retrieve a session ID
 function getSessionId(): string {
   if (typeof window === 'undefined') return '';
@@ -32,6 +46,11 @@ function getBrowserInfo(): string {
 export async function trackPageView(path: string): Promise<void> {
   if (typeof window === 'undefined') return;
   
+  // Skip tracking on localhost
+  if (isLocalhost()) {
+    return;
+  }
+  
   try {
     const event: AnalyticsEvent = {
       sessionId: getSessionId(),
@@ -61,6 +80,11 @@ export async function trackPageView(path: string): Promise<void> {
 // Track a custom event (optional, for future use)
 export async function trackEvent(eventName: string, data?: Record<string, any>): Promise<void> {
   if (typeof window === 'undefined') return;
+  
+  // Skip tracking on localhost
+  if (isLocalhost()) {
+    return;
+  }
   
   try {
     const event: AnalyticsEvent = {
