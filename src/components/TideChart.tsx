@@ -26,6 +26,7 @@ export default function TideChart({ data, forecast }: TideChartProps) {
             day: "2-digit",
             hour: "2-digit",
             minute: "2-digit",
+            hour12: false,
             timeZone: "America/Argentina/Buenos_Aires",
         }),
         timestamp: point.moment.getTime(),
@@ -40,6 +41,7 @@ export default function TideChart({ data, forecast }: TideChartProps) {
             day: "2-digit",
             hour: "2-digit",
             minute: "2-digit",
+            hour12: false,
             timeZone: "America/Argentina/Buenos_Aires",
         }),
         timestamp: f.date.getTime(),
@@ -81,10 +83,10 @@ export default function TideChart({ data, forecast }: TideChartProps) {
     }
 
     return (
-        <div className="w-full h-80 p-4 bg-white rounded-lg border border-gray-200">
+        <div className="w-full h-100 p-4 bg-white rounded-lg border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Histórico de Mareas</h3>
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={allData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <LineChart data={allData} margin={{ top: 5, right: 30, left: 20, bottom: 35 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
                         dataKey="timestamp" 
@@ -102,6 +104,7 @@ export default function TideChart({ data, forecast }: TideChartProps) {
                                 day: "2-digit",
                                 hour: "2-digit",
                                 minute: "2-digit",
+                                hour12: false,
                                 timeZone: "America/Argentina/Buenos_Aires",
                             });
                         }}

@@ -162,11 +162,13 @@ export default function RiverHeightDisplay({
         
         const date = new Date(data.timestamp);
         setFormattedTimestamp(date.toLocaleString("es-AR", {
-            year: "numeric",
+            // year: "numeric",
+            weekday: "long",
             month: "2-digit",
             day: "2-digit",
             hour: "2-digit",
             minute: "2-digit",
+            hour12: false,
             timeZone: "America/Argentina/Buenos_Aires",
         }));
     }, [isMounted, data?.timestamp]);
@@ -281,11 +283,12 @@ export default function RiverHeightDisplay({
 
                 const formatFullDate = (date: Date) => {
                     return date.toLocaleString("es-AR", {
-                        weekday: "short",
+                        weekday: "long",
                         month: "2-digit",
                         day: "2-digit",
                         hour: "2-digit",
                         minute: "2-digit",
+                        hour12: false,
                         timeZone: "America/Argentina/Buenos_Aires",
                     });
                 };
