@@ -16,8 +16,9 @@ export default async function Home() {
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            🌊 Alerta Sudestada
+          <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
+            <img src="/icon-source.png" alt="Wave icon" className="w-10 h-10 inline-block" />
+            Alerta Sudestada
           </h1>
           <p className="text-lg text-gray-600">
             Monitoreo en tiempo real de la altura del río con alertas de inundación
