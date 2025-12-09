@@ -1,6 +1,7 @@
 import { getRiverHeight, getForecast, getHistoricalTideData } from "@/app/actions/riverHeight";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import FloodAlerts from "@/components/FloodAlerts";
+import AlertLevelsModal from "@/components/AlertLevelsModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 export default async function Home() {
@@ -39,6 +40,9 @@ export default async function Home() {
           <p className="mt-2">Instala esta app en tu dispositivo para recibir notificaciones</p>
         </footer>
       </main>
+      
+      {/* Alert Levels Modal */}
+      <AlertLevelsModal />
       
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />

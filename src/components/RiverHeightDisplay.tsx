@@ -216,10 +216,23 @@ export default function RiverHeightDisplay({
             >
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-2xl font-bold text-gray-800">Estado del Río</h2>
-                    <span className={`px-4 py-2 rounded-full ${config.color} text-white font-semibold flex items-center gap-2`}>
-                        <span>{config.icon}</span>
-                        {config.label}
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => {
+                                const event = new CustomEvent('openAlertLevelsModal');
+                                window.dispatchEvent(event);
+                            }}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-1.5 text-sm"
+                            aria-label="Mostrar niveles de alerta"
+                        >
+                            <span>ℹ️</span>
+                            <span>INFO</span>
+                        </button>
+                        <span className={`px-4 py-2 rounded-full ${config.color} text-white font-semibold flex items-center gap-2`}>
+                            <span>{config.icon}</span>
+                            {config.label}
+                        </span>
+                    </div>
                 </div>
 
                 <div className="mb-4">
