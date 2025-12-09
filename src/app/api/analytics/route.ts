@@ -46,11 +46,11 @@ export async function GET() {
     const totalEvents = await collection.countDocuments();
     const uniqueSessions = await collection.distinct('sessionId').then(sessions => sessions.length);
     
-    // Get page views by path
-    const pageViews = await collection.aggregate([
+    // Get page and event views by path and eventName
+    const eventViews = await collection.aggregate([
       {
         $group: {
-          _id: '$path',
+          _id: { path: '$path', eventName: '$eventName' },
           count: { $sum: 1 },
         },
       },
@@ -58,14 +58,14 @@ export async function GET() {
         $sort: { count: -1 },
       },
       {
-        $limit: 10,
+        $limit: 20, // Increased limit to show more events
       },
     ]).toArray();
 
     return NextResponse.json({
       totalEvents,
       uniqueSessions,
-      pageViews,
+      eventViews,
     });
   } catch (error) {
     console.error('Error fetching analytics:', error);

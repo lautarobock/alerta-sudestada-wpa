@@ -2,6 +2,7 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { submitFloodReport } from '@/app/actions/floodReport';
+import { trackEvent } from '@/utils/analytics';
 import type { FloodState } from '@/types/floodReport';
 
 const FLOOD_STATES: { value: FloodState; label: string; description: string }[] = [
@@ -123,7 +124,10 @@ export default function FloodReportForm() {
   return (
     <div className="w-full max-w-2xl mx-auto">
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          setIsOpen(true);
+          trackEvent('flood_report_modal_opened');
+        }}
         className="w-full max-w-2xl mx-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors"
       >
         📍 Reportar Estado de Inundación

@@ -82,9 +82,9 @@ export async function trackEvent(eventName: string, data?: Record<string, any>):
   if (typeof window === 'undefined') return;
   
   // Skip tracking on localhost
-  if (isLocalhost()) {
-    return;
-  }
+//   if (isLocalhost()) {
+//     return;
+//   }
   
   try {
     const event: AnalyticsEvent = {
