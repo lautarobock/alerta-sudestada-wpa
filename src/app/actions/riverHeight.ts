@@ -24,9 +24,9 @@ export interface HistoricalTideData {
 // Thresholds for alerts (in meters)
 const THRESHOLDS = {
     normal: 0,
-    warning: 0.5, // 2.5m
-    alert: 0.8, // 3.0m
-    critical: 3.5, // 3.5m
+    warning: 2.5,
+    alert: 3.0,
+    critical: 3.5
 };
 
 function getStatus(height: number): RiverHeightData["status"] {
