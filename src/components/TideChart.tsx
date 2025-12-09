@@ -87,12 +87,24 @@ export default function TideChart({ data, forecast }: TideChartProps) {
                 <LineChart data={allData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
-                        dataKey="time" 
+                        dataKey="timestamp" 
+                        type="number"
+                        scale="time"
+                        domain={['dataMin', 'dataMax']}
                         stroke="#6b7280"
                         fontSize={12}
                         angle={-45}
                         textAnchor="end"
                         height={80}
+                        tickFormatter={(value) => {
+                            return new Date(value).toLocaleString("es-AR", {
+                                month: "2-digit",
+                                day: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                timeZone: "America/Argentina/Buenos_Aires",
+                            });
+                        }}
                     />
                     <YAxis 
                         stroke="#6b7280"
