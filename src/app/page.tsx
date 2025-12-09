@@ -3,6 +3,7 @@ import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import FloodAlerts from "@/components/FloodAlerts";
 import AlertLevelsModal from "@/components/AlertLevelsModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import FloodReportForm from "@/components/FloodReportForm";
 
 export default async function Home() {
   const [initialData, initialForecast, initialHistoricalData] = await Promise.all([
@@ -33,6 +34,7 @@ export default async function Home() {
             initialHistoricalData={initialHistoricalData}
           />
           <FloodAlerts />
+          <FloodReportForm />
         </div>
 
         {/* Footer */}
