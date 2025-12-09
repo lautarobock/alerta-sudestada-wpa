@@ -114,7 +114,7 @@ export async function getHistoricalTideData(daysAgo: number = 1): Promise<Histor
         
         // Fetch historical tide data for both types
         // Document structure: { moment: Date, type: 'reading' | 'astronomical', value: number }
-        console.log('days ago', new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000));
+
         const tideDocuments = await collection
             .find({ moment: { $gte: new Date(new Date().getTime() - daysAgo * 24 * 60 * 60 * 1000) } }, { sort: { moment: -1 } }) // Get more to account for both types
             .toArray();
