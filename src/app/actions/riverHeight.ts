@@ -36,37 +36,37 @@ function getStatus(height: number): RiverHeightData["status"] {
     return "normal";
 }
 
-export async function getRiverHeight(): Promise<RiverHeightData | null> {
+export async function getRiverHeight(): Promise<RiverHeightData[] | null> {
     try {
         const client = await clientPromise;
         const db = client.db('alerta-sudestada');
         // Query the tides collection
         const collection = db.collection('tides');
-        // Get the most recent reading by moment (Date)
+        // Get the two most recent readings by moment (Date)
         // Document structure: { moment: Date, reading: number, astronomical: number }
-        const latestReading = await collection
-            .findOne({ type: "reading" }, { sort: { moment: -1 } })
+        const latestReadings = await collection
+            .find({ type: "reading" }, { sort: { moment: -1 } })
+            .limit(2)
+            .toArray();
         
         
-        if (!latestReading || latestReading.length === 0) {
+        if (!latestReadings || latestReadings.length === 0) {
             return null;
         }
         
-        // Use the reading field (real height) for display
-        const height = latestReading.value ?? 0;
-
-        // Convert moment (Date) to ISO string
-        const timestamp = latestReading.moment
-            ? new Date(latestReading.moment).toISOString()
-            : new Date().toISOString();
-
-        return {
-            height,
-            unit: "m",
-            timestamp,
-            location: "San Fernando",
-            status: getStatus(height),
-        };
+        return latestReadings.map(latestReading => {
+            const height = latestReading.value ?? 0;
+            const timestamp = latestReading.moment
+                ? new Date(latestReading.moment).toISOString()
+                : new Date().toISOString();
+            return {
+                height,
+                unit: "m",
+                timestamp,
+                location: "San Fernando",
+                status: getStatus(height),
+            };
+        });
     } catch (error) {
         console.error('Error fetching river height from MongoDB:', error);
         return null;

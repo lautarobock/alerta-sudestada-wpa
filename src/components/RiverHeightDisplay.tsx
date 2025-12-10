@@ -51,42 +51,46 @@ export default function RiverHeightDisplay({
     initialForecast,
     initialHistoricalData
 }: { 
-    initialData?: RiverHeightData | null;
+    initialData?: RiverHeightData[] | null;
     initialForecast?: ForecastData | null;
     initialHistoricalData?: HistoricalTideData | null;
 }) {
-    const [data, setData] = useState<RiverHeightData | null>(initialData || null);
+    const [data, setData] = useState<RiverHeightData | null>(initialData?.[0] || null);
     const [forecast, setForecast] = useState<ForecastData | null>(initialForecast || null);
     const [historicalData, setHistoricalData] = useState<HistoricalTideData | null>(initialHistoricalData || null);
     const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
-    const [lastUpdate, setLastUpdate] = useState<Date | null>(initialData?.timestamp ? new Date(initialData.timestamp) : null);
+    const [lastUpdate, setLastUpdate] = useState<Date | null>(initialData?.[0]?.timestamp ? new Date(initialData[0].timestamp) : null);
     const [timeSinceUpdate, setTimeSinceUpdate] = useState<number>(0);
     const [isPending, startTransition] = useTransition();
     const [isMounted, setIsMounted] = useState(false);
     const [formattedTimestamp, setFormattedTimestamp] = useState<string>("");
     const isVisible = usePageVisibility();
-    const previousStatusRef = useRef<RiverHeightData["status"] | null>(initialData?.status || null);
+    const previousStatusRef = useRef<RiverHeightData["status"] | null>(initialData?.[0]?.status || null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const previousHeightRef = useRef<number | null>(initialData?.[1]?.height || null);
 
     const fetchData = async () => {
         startTransition(async () => {
             try {
                 setError(null);
-                const [riverData, forecastData, historicalTideData] = await Promise.all([
+                const [riverDataArray, forecastData, historicalTideData] = await Promise.all([
                     getRiverHeight(),
                     getForecast(),
                     getHistoricalTideData()
                 ]);
                 
-                if (!riverData) {
+                if (!riverDataArray || riverDataArray.length === 0) {
                     throw new Error("No se encontraron datos");
                 }
                 
+                const latestRiverData = riverDataArray[0];
+                const secondLatestRiverData = riverDataArray.length > 1 ? riverDataArray[1] : null;
+
                 // Check if status changed to alert/critical and show notification
                 if (previousStatusRef.current && 
-                    previousStatusRef.current !== riverData.status &&
-                    (riverData.status === "alert" || riverData.status === "critical")) {
+                    previousStatusRef.current !== latestRiverData.status &&
+                    (latestRiverData.status === "alert" || latestRiverData.status === "critical")) {
                     const statusLabels = {
                         alert: "Alerta",
                         critical: "Crítico",
@@ -94,19 +98,20 @@ export default function RiverHeightDisplay({
                         normal: "Normal"
                     };
                     await showAlertNotification(
-                        `🚨 ${statusLabels[riverData.status]} - Río Luján`,
-                        `El nivel del río ha alcanzado ${riverData.height}m. Estado: ${statusLabels[riverData.status]}`,
-                        { height: riverData.height, status: riverData.status }
+                        `🚨 ${statusLabels[latestRiverData.status]} - Río Luján`,
+                        `El nivel del río ha alcanzado ${latestRiverData.height}m. Estado: ${statusLabels[latestRiverData.status]}`,
+                        { height: latestRiverData.height, status: latestRiverData.status }
                     );
                 }
                 
-                previousStatusRef.current = riverData.status;
-                setData(riverData);
+                previousStatusRef.current = latestRiverData.status;
+                setData(latestRiverData);
                 setForecast(forecastData);
                 setHistoricalData(historicalTideData);
                 const now = new Date();
                 setLastUpdate(now);
                 setTimeSinceUpdate(0);
+                previousHeightRef.current = secondLatestRiverData?.height || null;
             } catch (err) {
                 setError(err instanceof Error ? err.message : "Error desconocido");
             } finally {
@@ -247,6 +252,13 @@ export default function RiverHeightDisplay({
                     <div className="flex items-baseline gap-2">
                         <span className="text-6xl font-bold text-gray-900">{data.height}</span>
                         <span className="text-2xl text-gray-600">{data.unit}</span>
+                        {previousHeightRef.current !== null && (
+                            <span className="text-2xl" aria-label="Cambio en el nivel del río">
+                                {data.height > previousHeightRef.current && "⬆️"}
+                                {data.height < previousHeightRef.current && "⬇️"}
+                                {data.height === previousHeightRef.current && "↔️"}
+                            </span>
+                        )}
                     </div>
                     <p className="text-sm text-gray-500 mt-2">
                         Altura actual del río
