@@ -1,15 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition, useRef } from "react";
-import { getRiverHeight, getForecast, getHistoricalTideData, type RiverHeightData, type HistoricalTideData } from "@/app/actions/riverHeight";
-import { ForecastType, type ForecastData, type Forecast } from "@/types/forecast";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
+import { ForecastType, type ForecastData } from "@/types/forecast";
+import { type RiverHeightData, type HistoricalTideData } from "@/app/actions/riverHeight";
 import TideChart from "@/components/TideChart";
-import { 
-  registerPeriodicSync, 
-  requestNotificationPermission, 
-  showAlertNotification 
-} from "@/utils/backgroundSync";
 
 const STATUS_CONFIG = {
     normal: {
@@ -46,150 +39,21 @@ const STATUS_CONFIG = {
     },
 };
 
+interface RiverHeightDisplayProps {
+    data: RiverHeightData | null;
+    forecast: ForecastData | null;
+    historicalData: HistoricalTideData | null;
+    loading: boolean;
+    previousHeight: number | null;
+}
+
 export default function RiverHeightDisplay({ 
-    initialData,
-    initialForecast,
-    initialHistoricalData
-}: { 
-    initialData?: RiverHeightData[] | null;
-    initialForecast?: ForecastData | null;
-    initialHistoricalData?: HistoricalTideData | null;
-}) {
-    const [data, setData] = useState<RiverHeightData | null>(initialData?.[0] || null);
-    const [forecast, setForecast] = useState<ForecastData | null>(initialForecast || null);
-    const [historicalData, setHistoricalData] = useState<HistoricalTideData | null>(initialHistoricalData || null);
-    const [loading, setLoading] = useState(!initialData);
-    const [error, setError] = useState<string | null>(null);
-    const [lastUpdate, setLastUpdate] = useState<Date | null>(initialData?.[0]?.timestamp ? new Date(initialData[0].timestamp) : null);
-    const [timeSinceUpdate, setTimeSinceUpdate] = useState<number>(0);
-    const [isPending, startTransition] = useTransition();
-    const [isMounted, setIsMounted] = useState(false);
-    const [formattedTimestamp, setFormattedTimestamp] = useState<string>("");
-    const isVisible = usePageVisibility();
-    const previousStatusRef = useRef<RiverHeightData["status"] | null>(initialData?.[0]?.status || null);
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
-    const previousHeightRef = useRef<number | null>(initialData?.[1]?.height || null);
-
-    const fetchData = async () => {
-        startTransition(async () => {
-            try {
-                setError(null);
-                const [riverDataArray, forecastData, historicalTideData] = await Promise.all([
-                    getRiverHeight(),
-                    getForecast(),
-                    getHistoricalTideData()
-                ]);
-                
-                if (!riverDataArray || riverDataArray.length === 0) {
-                    throw new Error("No se encontraron datos");
-                }
-                
-                const latestRiverData = riverDataArray[0];
-                const secondLatestRiverData = riverDataArray.length > 1 ? riverDataArray[1] : null;
-
-                // Check if status changed to alert/critical and show notification
-                if (previousStatusRef.current && 
-                    previousStatusRef.current !== latestRiverData.status &&
-                    (latestRiverData.status === "alert" || latestRiverData.status === "critical")) {
-                    const statusLabels = {
-                        alert: "Alerta",
-                        critical: "Crítico",
-                        warning: "Advertencia",
-                        normal: "Normal"
-                    };
-                    await showAlertNotification(
-                        `🚨 ${statusLabels[latestRiverData.status]} - Río Luján`,
-                        `El nivel del río ha alcanzado ${latestRiverData.height}m. Estado: ${statusLabels[latestRiverData.status]}`,
-                        { height: latestRiverData.height, status: latestRiverData.status }
-                    );
-                }
-                
-                previousStatusRef.current = latestRiverData.status;
-                setData(latestRiverData);
-                setForecast(forecastData);
-                setHistoricalData(historicalTideData);
-                const now = new Date();
-                setLastUpdate(now);
-                setTimeSinceUpdate(0);
-                previousHeightRef.current = secondLatestRiverData?.height || null;
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "Error desconocido");
-            } finally {
-                setLoading(false);
-            }
-        });
-    };
-
-    // Initialize: request permissions and register background sync
-    useEffect(() => {
-        setIsMounted(true);
-        
-        // Request notification permission on mount
-        requestNotificationPermission();
-        
-        // Register for periodic background sync
-        if ("serviceWorker" in navigator) {
-            registerPeriodicSync();
-        }
-        
-        // Initial fetch
-        fetchData();
-    }, []);
-
-    // Handle visibility changes: pause/resume interval and fetch when visible
-    useEffect(() => {
-        // Clear any existing interval
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
-
-        if (isVisible) {
-            // App is visible: fetch immediately and start interval
-            fetchData();
-            intervalRef.current = setInterval(fetchData, 30000);
-        } else {
-            // App is in background: interval will be paused
-            // Background sync will handle updates via service worker
-        }
-
-        return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
-        };
-    }, [isVisible]);
-
-    // Update formatted timestamp when data changes (only on client)
-    useEffect(() => {
-        if (!isMounted || !data?.timestamp) return;
-        
-        const date = new Date(data.timestamp);
-        setFormattedTimestamp(date.toLocaleString("es-AR", {
-            // year: "numeric",
-            weekday: "long",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-            timeZone: "America/Argentina/Buenos_Aires",
-        }));
-    }, [isMounted, data?.timestamp]);
-
-    // Update time since update counter every second (only on client)
-    useEffect(() => {
-        if (!isMounted || !lastUpdate) return;
-
-        const updateCounter = () => {
-            setTimeSinceUpdate(Math.floor((Date.now() - lastUpdate.getTime()) / 1000));
-        };
-
-        updateCounter();
-        const interval = setInterval(updateCounter, 1000);
-        return () => clearInterval(interval);
-    }, [isMounted, lastUpdate]);
+    data,
+    forecast,
+    historicalData,
+    loading,
+    previousHeight
+}: RiverHeightDisplayProps) {
 
     if (loading) {
         return (
@@ -199,18 +63,8 @@ export default function RiverHeightDisplay({
         );
     }
 
-    if (error || !data) {
-        return (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700">Error: {error || "No se pudo cargar los datos"}</p>
-                <button
-                    onClick={fetchData}
-                    className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                    Reintentar
-                </button>
-            </div>
-        );
+    if (!data) {
+        return null; // Or some placeholder if data is missing but not loading (Dashboard handles error)
     }
 
     const config = STATUS_CONFIG[data.status];
@@ -224,15 +78,7 @@ export default function RiverHeightDisplay({
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-2xl font-bold text-gray-800">Estado del Río</h2>
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={fetchData}
-                            disabled={isPending}
-                            className="px-3 py-1.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium flex items-center gap-1.5 text-sm disabled:opacity-50"
-                            aria-label="Actualizar datos"
-                        >
-                            <span className={`inline-block ${isPending ? "animate-spin" : ""}`}>🔄</span>
-                            <span>ACTUALIZAR</span>
-                        </button>
+                        {/* Refresh button moved to Dashboard */}
                         <button
                             onClick={() => {
                                 const event = new CustomEvent('openAlertLevelsModal');
@@ -251,15 +97,6 @@ export default function RiverHeightDisplay({
                     </div>
                 </div>
 
-                <div className="mb-4 text-sm text-gray-500">
-                    Última actualización: <span className="font-medium text-gray-800">{isMounted ? formattedTimestamp : "Cargando..."}</span>
-                    {isMounted && (
-                        <span className="ml-2 text-gray-400">
-                            (hace {timeSinceUpdate}s)
-                        </span>
-                    )}
-                </div>
-
                 <div className="mb-4">
                     <p className="text-sm text-gray-600 mb-1">Ubicación</p>
                     <p className="text-lg font-medium text-gray-800">{data.location}</p>
@@ -270,11 +107,11 @@ export default function RiverHeightDisplay({
                     <div className="flex items-baseline gap-2">
                         <span className="text-6xl font-bold text-gray-900">{data.height}</span>
                         <span className="text-2xl text-gray-600">{data.unit}</span>
-                        {previousHeightRef.current !== null && (
+                        {previousHeight !== null && (
                             <span className="text-2xl" aria-label="Cambio en el nivel del río">
-                                {data.height > previousHeightRef.current && "⬆️"}
-                                {data.height < previousHeightRef.current && "⬇️"}
-                                {data.height === previousHeightRef.current && "↔️"}
+                                {data.height > previousHeight && "⬆️"}
+                                {data.height < previousHeight && "⬇️"}
+                                {data.height === previousHeight && "↔️"}
                             </span>
                         )}
                     </div>
@@ -380,4 +217,3 @@ export default function RiverHeightDisplay({
         </div>
     );
 }
-
