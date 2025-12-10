@@ -1,15 +1,18 @@
 import { getRiverHeight, getForecast, getHistoricalTideData } from "@/app/actions/riverHeight";
+import { getWeather } from "@/app/actions/weather";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
+import WeatherCard from "@/components/WeatherCard";
 import FloodAlerts from "@/components/FloodAlerts";
 import AlertLevelsModal from "@/components/AlertLevelsModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import FloodReportForm from "@/components/FloodReportForm";
 
 export default async function Home() {
-    const [initialData, initialForecast, initialHistoricalData] = await Promise.all([
+    const [initialData, initialForecast, initialHistoricalData, weatherData] = await Promise.all([
         getRiverHeight(),
         getForecast(),
-        getHistoricalTideData()
+        getHistoricalTideData(),
+        getWeather()
     ]);
 
     return (
@@ -33,6 +36,7 @@ export default async function Home() {
                         initialForecast={initialForecast}
                         initialHistoricalData={initialHistoricalData}
                     />
+                    <WeatherCard data={weatherData} />
                     <FloodAlerts />
                     <FloodReportForm />
 
