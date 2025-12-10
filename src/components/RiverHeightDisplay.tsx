@@ -242,6 +242,10 @@ export default function RiverHeightDisplay({
                     </div>
                 </div>
 
+                <div className="mb-4 text-sm text-gray-500">
+                    Última actualización: <span className="font-medium text-gray-800">{isMounted ? formattedTimestamp : "Cargando..."}</span>
+                </div>
+
                 <div className="mb-4">
                     <p className="text-sm text-gray-600 mb-1">Ubicación</p>
                     <p className="text-lg font-medium text-gray-800">{data.location}</p>
