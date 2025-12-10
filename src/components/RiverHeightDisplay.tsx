@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ForecastType, type ForecastData } from "@/types/forecast";
 import { type RiverHeightData, type HistoricalTideData } from "@/app/actions/riverHeight";
 import TideChart from "@/components/TideChart";
@@ -54,6 +55,40 @@ export default function RiverHeightDisplay({
     loading,
     previousHeight
 }: RiverHeightDisplayProps) {
+    const [formattedReadingTimestamp, setFormattedReadingTimestamp] = useState<string>("");
+    const [timeSinceReading, setTimeSinceReading] = useState<number>(0);
+    const [isMounted, setIsMounted] = useState(false);
+
+    // Update formatted reading timestamp when data changes
+    useEffect(() => {
+        setIsMounted(true);
+        if (!data?.timestamp) return;
+        
+        const readingDate = new Date(data.timestamp);
+        setFormattedReadingTimestamp(readingDate.toLocaleString("es-AR", {
+            weekday: "long",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+            timeZone: "America/Argentina/Buenos_Aires",
+        }));
+    }, [data?.timestamp]);
+
+    // Update time since reading counter every second
+    useEffect(() => {
+        if (!isMounted || !data?.timestamp) return;
+
+        const updateCounter = () => {
+            const readingDate = new Date(data.timestamp);
+            setTimeSinceReading(Math.floor((Date.now() - readingDate.getTime()) / 1000));
+        };
+
+        updateCounter();
+        const interval = setInterval(updateCounter, 1000);
+        return () => clearInterval(interval);
+    }, [isMounted, data?.timestamp]);
 
     if (loading) {
         return (
@@ -68,6 +103,22 @@ export default function RiverHeightDisplay({
     }
 
     const config = STATUS_CONFIG[data.status];
+
+    function formatTimeSinceReading(seconds: number): string {
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        if (days > 0) {
+            return `${days}d`;
+        }
+        if (hours > 0) {
+            return `${hours}h`;
+        }
+        if (minutes > 0) {
+            return `${minutes}m`;
+        }
+        return `${seconds}s`;
+    }
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-6">
@@ -95,6 +146,15 @@ export default function RiverHeightDisplay({
                             {config.label}
                         </span>
                     </div>
+                </div>
+
+                <div className="mb-4 text-sm text-gray-500">
+                    Lectura: <span className="font-medium text-gray-800">{isMounted ? formattedReadingTimestamp : "Cargando..."}</span>
+                    {isMounted && (
+                        <span className="ml-2 text-gray-400">
+                            (hace {formatTimeSinceReading(timeSinceReading)})
+                        </span>
+                    )}
                 </div>
 
                 <div className="mb-4">

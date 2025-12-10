@@ -189,7 +189,7 @@ export default function Dashboard({
                             <span>{isPending ? "ACTUALIZANDO..." : "ACTUALIZAR AHORA"}</span>
                         </button>
                         <div className="text-sm text-gray-500">
-                            Última actualización: <span className="font-medium text-gray-800">{isMounted ? formattedTimestamp : "Cargando..."}</span>
+                            Última actualización de datos: <span className="font-medium text-gray-800">{isMounted ? formattedTimestamp : "Cargando..."}</span>
                             {isMounted && (
                                 <span className="ml-1 text-gray-400">
                                     (hace {timeSinceUpdate}s)
