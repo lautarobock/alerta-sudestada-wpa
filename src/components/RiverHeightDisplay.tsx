@@ -225,6 +225,15 @@ export default function RiverHeightDisplay({
                     <h2 className="text-2xl font-bold text-gray-800">Estado del Río</h2>
                     <div className="flex items-center gap-3">
                         <button
+                            onClick={fetchData}
+                            disabled={isPending}
+                            className="px-3 py-1.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium flex items-center gap-1.5 text-sm disabled:opacity-50"
+                            aria-label="Actualizar datos"
+                        >
+                            <span className={`inline-block ${isPending ? "animate-spin" : ""}`}>🔄</span>
+                            <span>ACTUALIZAR</span>
+                        </button>
+                        <button
                             onClick={() => {
                                 const event = new CustomEvent('openAlertLevelsModal');
                                 window.dispatchEvent(event);
@@ -244,6 +253,11 @@ export default function RiverHeightDisplay({
 
                 <div className="mb-4 text-sm text-gray-500">
                     Última actualización: <span className="font-medium text-gray-800">{isMounted ? formattedTimestamp : "Cargando..."}</span>
+                    {isMounted && (
+                        <span className="ml-2 text-gray-400">
+                            (hace {timeSinceUpdate}s)
+                        </span>
+                    )}
                 </div>
 
                 <div className="mb-4">
@@ -363,31 +377,6 @@ export default function RiverHeightDisplay({
             {historicalData && historicalData.data && historicalData.data.length > 0 && (
                 <TideChart data={historicalData.data} forecast={forecast} />
             )}
-
-            {/* Info Card */}
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Última actualización:</span>
-                    <span className="font-medium text-gray-800">
-                        {isMounted ? formattedTimestamp : "Cargando..."}
-                    </span>
-                </div>
-                {isMounted && (
-                    <div className="flex items-center justify-between text-sm mt-2">
-                        <span className="text-gray-600">Actualizado hace:</span>
-                        <span className="font-medium text-gray-800">
-                            {timeSinceUpdate}s
-                        </span>
-                    </div>
-                )}
-                <button
-                    onClick={fetchData}
-                    disabled={isPending}
-                    className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isPending ? "Actualizando..." : "Actualizar ahora"}
-                </button>
-            </div>
         </div>
     );
 }
