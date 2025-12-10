@@ -139,16 +139,26 @@ export default function Dashboard({
     // Update formatted timestamp
     useEffect(() => {
         if (!isMounted || !lastUpdate) return;
-        
-        setFormattedTimestamp(lastUpdate.toLocaleString("es-AR", {
-            weekday: "long",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-            timeZone: "America/Argentina/Buenos_Aires",
-        }));
+        // if is today do not show weekday, day and month
+        const today = new Date();
+        if (lastUpdate.getDate() === today.getDate() && lastUpdate.getMonth() === today.getMonth() && lastUpdate.getFullYear() === today.getFullYear()) {
+            setFormattedTimestamp(lastUpdate.toLocaleString("es-AR", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+                timeZone: "America/Argentina/Buenos_Aires",
+            }));
+        } else {
+            setFormattedTimestamp(lastUpdate.toLocaleString("es-AR", {
+                weekday: "short",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+                timeZone: "America/Argentina/Buenos_Aires",
+            }));
+        }
     }, [isMounted, lastUpdate]);
 
     // Update time since update counter
@@ -189,7 +199,7 @@ export default function Dashboard({
                             <span>{isPending ? "ACTUALIZANDO..." : "ACTUALIZAR AHORA"}</span>
                         </button> */}
                         <div className="text-sm text-gray-500">
-                            Última actualización de datos: <span className="font-medium text-gray-800">{isMounted ? formattedTimestamp : "Cargando..."}</span>
+                            Última actualización: <span className="font-medium text-gray-800">{isMounted ? formattedTimestamp : "Cargando..."}</span>
                             {isMounted && (
                                 <span className="ml-1 text-gray-400">
                                     (hace {timeSinceUpdate}s)
