@@ -38,7 +38,7 @@ export default function Dashboard({
     
     const [loading, setLoading] = useState(!initialRiverData);
     const [error, setError] = useState<string | null>(null);
-    const [lastUpdate, setLastUpdate] = useState<Date | null>(initialRiverData?.[0]?.timestamp ? new Date(initialRiverData[0].timestamp) : null);
+    const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
     const [timeSinceUpdate, setTimeSinceUpdate] = useState<number>(0);
     const [formattedTimestamp, setFormattedTimestamp] = useState<string>("");
     
@@ -179,7 +179,7 @@ export default function Dashboard({
                     
                     {/* Refresh Control */}
                     <div className="flex flex-col items-center gap-2 mb-4">
-                        <button
+                        {/* <button
                             onClick={fetchData}
                             disabled={isPending}
                             className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 shadow-sm disabled:opacity-70"
@@ -187,7 +187,7 @@ export default function Dashboard({
                         >
                             <span className={`inline-block ${isPending ? "animate-spin" : ""}`}>🔄</span>
                             <span>{isPending ? "ACTUALIZANDO..." : "ACTUALIZAR AHORA"}</span>
-                        </button>
+                        </button> */}
                         <div className="text-sm text-gray-500">
                             Última actualización de datos: <span className="font-medium text-gray-800">{isMounted ? formattedTimestamp : "Cargando..."}</span>
                             {isMounted && (
