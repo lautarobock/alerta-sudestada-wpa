@@ -62,10 +62,99 @@ export async function GET() {
       },
     ]).toArray();
 
+    // Get events grouped by day
+    const eventsByDay = await collection.aggregate([
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$timestamp',
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 }, // Sort by date ascending
+      },
+    ]).toArray();
+
+    // Get unique sessions grouped by day (all sessions active on that day)
+    const uniqueSessionsByDay = await collection.aggregate([
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$timestamp',
+              },
+            },
+            sessionId: '$sessionId',
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.date',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 }, // Sort by date ascending
+      },
+    ]).toArray();
+
+    // Get new sessions grouped by day (only count sessions that first appeared on that day)
+    // This finds the first occurrence of each session and groups by the date of that first occurrence
+    const newSessionsByDay = await collection.aggregate([
+      {
+        // First, find the earliest timestamp for each sessionId
+        $group: {
+          _id: '$sessionId',
+          firstTimestamp: { $min: '$timestamp' },
+        },
+      },
+      {
+        // Convert the first timestamp to a date string
+        $project: {
+          date: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$firstTimestamp',
+            },
+          },
+        },
+      },
+      {
+        // Group by date and count how many sessions first appeared on each day
+        $group: {
+          _id: '$date',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 }, // Sort by date ascending
+      },
+    ]).toArray();
+
     return NextResponse.json({
       totalEvents,
       uniqueSessions,
       eventViews,
+      eventsByDay: eventsByDay.map(item => ({
+        date: item._id,
+        count: item.count,
+      })),
+      uniqueSessionsByDay: uniqueSessionsByDay.map(item => ({
+        date: item._id,
+        count: item.count,
+      })),
+      newSessionsByDay: newSessionsByDay.map(item => ({
+        date: item._id,
+        count: item.count,
+      })),
     });
   } catch (error) {
     console.error('Error fetching analytics:', error);
