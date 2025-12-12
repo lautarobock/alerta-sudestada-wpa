@@ -86,7 +86,7 @@ export default function TideChart({ data, forecast }: TideChartProps) {
         <div className="w-full h-100 p-4 bg-white rounded-lg border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Histórico de Mareas</h3>
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={allData} margin={{ top: 5, right: 30, left: 20, bottom: 35 }}>
+                <LineChart data={allData} margin={{ top: 5, right: 30, left: 0, bottom: 35 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
                         dataKey="timestamp" 
@@ -112,7 +112,6 @@ export default function TideChart({ data, forecast }: TideChartProps) {
                     <YAxis 
                         stroke="#6b7280"
                         fontSize={12}
-                        label={{ value: 'Altura (m)', angle: -90, position: 'insideLeft' }}
                     />
                     <Tooltip 
                         contentStyle={{ 
