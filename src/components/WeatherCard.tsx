@@ -73,8 +73,8 @@ export default function WeatherCard({ data }: WeatherCardProps) {
                 <text x="15" y="55" textAnchor="middle" fontSize="14" fill="#3b82f6" fontWeight="bold">O</text>
                 {/* Center point */}
                 <circle cx="50" cy="50" r="4" fill="#3b82f6" />
-                {/* Wind direction arrow - points in direction wind is coming FROM (meteorological convention) */}
-                <g transform={`rotate(${wind.deg} 50 50)`}>
+                {/* Wind direction arrow - points in direction wind is going TO */}
+                <g transform={`rotate(${wind.deg + 180} 50 50)`}>
                   <line 
                     x1="50" 
                     y1="50" 
