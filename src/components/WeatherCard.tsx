@@ -17,7 +17,7 @@ export default function WeatherCard({ data }: WeatherCardProps) {
   const getWindDirection = (deg: number) => {
     const directions = [
       "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-      "S", "SSW", "SW", "WSW", "O", "ONO", "NO", "NNO"
+      "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO"
     ];
     return directions[Math.round(deg / 22.5) % 16];
   };
@@ -57,37 +57,8 @@ export default function WeatherCard({ data }: WeatherCardProps) {
                 viewBox="0 0 100 100" 
                 className="w-full h-full"
               >
-                {/* Outer circle */}
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="45" 
-                  fill="none" 
-                  stroke="#e0e7ff" 
-                  strokeWidth="2"
-                />
-                {/* Cardinal direction markers */}
-                <text x="50" y="15" textAnchor="middle" fontSize="14" fill="#3b82f6" fontWeight="bold">N</text>
-                <text x="85" y="55" textAnchor="middle" fontSize="14" fill="#3b82f6" fontWeight="bold">E</text>
-                <text x="50" y="90" textAnchor="middle" fontSize="14" fill="#3b82f6" fontWeight="bold">S</text>
-                <text x="15" y="55" textAnchor="middle" fontSize="14" fill="#3b82f6" fontWeight="bold">O</text>
-                {/* Center point */}
-                <circle cx="50" cy="50" r="4" fill="#3b82f6" />
-                {/* Wind direction arrow - points in direction wind is going TO */}
-                <g transform={`rotate(${wind.deg + 180} 50 50)`}>
-                  <line 
-                    x1="50" 
-                    y1="50" 
-                    x2="50" 
-                    y2="15" 
-                    stroke="#3b82f6" 
-                    strokeWidth="4" 
-                    strokeLinecap="round"
-                    markerEnd="url(#arrowhead)"
-                  />
-                </g>
-                {/* Arrowhead marker definition */}
                 <defs>
+                  {/* Arrowhead marker definition */}
                   <marker
                     id="arrowhead"
                     markerWidth="8"
@@ -102,6 +73,79 @@ export default function WeatherCard({ data }: WeatherCardProps) {
                     />
                   </marker>
                 </defs>
+                
+                {/* Outer circle */}
+                <circle 
+                  cx="50" 
+                  cy="50" 
+                  r="45" 
+                  fill="none" 
+                  stroke="#cbd5e1" 
+                  strokeWidth="1.5"
+                />
+                
+                {/* Inner circle */}
+                <circle 
+                  cx="50" 
+                  cy="50" 
+                  r="35" 
+                  fill="none" 
+                  stroke="#e2e8f0" 
+                  strokeWidth="1"
+                />
+                
+                {/* Radial lines for 16 directions */}
+                {Array.from({ length: 16 }, (_, i) => {
+                  const angle = i * 22.5;
+                  const isCardinal = i % 4 === 0;
+                  const isIntercardinal = i % 2 === 0;
+                  const length = isCardinal ? 10 : isIntercardinal ? 7 : 5;
+                  const x1 = 50 + 35 * Math.cos((angle - 90) * Math.PI / 180);
+                  const y1 = 50 + 35 * Math.sin((angle - 90) * Math.PI / 180);
+                  const x2 = 50 + (35 + length) * Math.cos((angle - 90) * Math.PI / 180);
+                  const y2 = 50 + (35 + length) * Math.sin((angle - 90) * Math.PI / 180);
+                  
+                  return (
+                    <line
+                      key={i}
+                      x1={x1}
+                      y1={y1}
+                      x2={x2}
+                      y2={y2}
+                      stroke={isCardinal ? "#94a3b8" : "#cbd5e1"}
+                      strokeWidth={isCardinal ? "1.5" : "1"}
+                    />
+                  );
+                })}
+                
+                {/* Cardinal direction markers (N, E, S, O) */}
+                <text x="50" y="12" textAnchor="middle" fontSize="12" fill="#1e40af" fontWeight="bold">N</text>
+                <text x="88" y="55" textAnchor="middle" fontSize="12" fill="#1e40af" fontWeight="bold">E</text>
+                <text x="50" y="93" textAnchor="middle" fontSize="12" fill="#1e40af" fontWeight="bold">S</text>
+                <text x="12" y="55" textAnchor="middle" fontSize="12" fill="#1e40af" fontWeight="bold">O</text>
+                
+                {/* Intercardinal direction markers (NE, SE, SW, NO) */}
+                <text x="75" y="25" textAnchor="middle" fontSize="9" fill="#3b82f6" fontWeight="600">NE</text>
+                <text x="75" y="85" textAnchor="middle" fontSize="9" fill="#3b82f6" fontWeight="600">SE</text>
+                <text x="25" y="85" textAnchor="middle" fontSize="9" fill="#3b82f6" fontWeight="600">SO</text>
+                <text x="25" y="25" textAnchor="middle" fontSize="9" fill="#3b82f6" fontWeight="600">NO</text>
+                
+                {/* Center point */}
+                <circle cx="50" cy="50" r="3" fill="#3b82f6" />
+                
+                {/* Wind direction arrow - points in direction wind is going TO */}
+                <g transform={`rotate(${wind.deg + 180} 50 50)`}>
+                  <line 
+                    x1="50" 
+                    y1="50" 
+                    x2="50" 
+                    y2="12" 
+                    stroke="#3b82f6" 
+                    strokeWidth="3.5" 
+                    strokeLinecap="round"
+                    markerEnd="url(#arrowhead)"
+                  />
+                </g>
               </svg>
             </div>
             <div className="text-center">
