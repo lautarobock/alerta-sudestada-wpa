@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getAlertThresholds } from "@/utils/alertThresholds";
 
 interface AlertThreshold {
   level: string;
@@ -8,33 +9,6 @@ interface AlertThreshold {
   description: string;
   color: string;
 }
-
-const THRESHOLDS: AlertThreshold[] = [
-  {
-    level: "Normal",
-    height: 0,
-    description: "Nivel de río dentro de parámetros normales",
-    color: "green",
-  },
-  {
-    level: "Advertencia",
-    height: 2.5,
-    description: "El nivel del río está aumentando. Monitorear de cerca.",
-    color: "yellow",
-  },
-  {
-    level: "Alerta",
-    height: 3.0,
-    description: "Nivel elevado. Posible riesgo de inundación en zonas bajas.",
-    color: "orange",
-  },
-  {
-    level: "Crítico",
-    height: 3.5,
-    description: "Nivel crítico. Evacuación recomendada en zonas de riesgo.",
-    color: "red",
-  },
-];
 
 const colorClasses = {
   green: "bg-green-100 border-green-300 text-green-800",
@@ -45,17 +19,52 @@ const colorClasses = {
 
 export default function AlertLevelsModal() {
   const [isOpen, setIsOpen] = useState(false);
+  const [thresholds, setThresholds] = useState(() => getAlertThresholds());
 
   useEffect(() => {
     const handleOpen = () => {
       setIsOpen(true);
     };
 
+    const handleThresholdUpdate = () => {
+      setThresholds(getAlertThresholds());
+    };
+
     window.addEventListener('openAlertLevelsModal', handleOpen);
+    window.addEventListener('thresholdsUpdated', handleThresholdUpdate);
+    
     return () => {
       window.removeEventListener('openAlertLevelsModal', handleOpen);
+      window.removeEventListener('thresholdsUpdated', handleThresholdUpdate);
     };
   }, []);
+
+  const THRESHOLDS: AlertThreshold[] = [
+    {
+      level: "Normal",
+      height: 0,
+      description: "Nivel de río dentro de parámetros normales",
+      color: "green",
+    },
+    {
+      level: "Advertencia",
+      height: thresholds.warning,
+      description: "El nivel del río está aumentando. Monitorear de cerca.",
+      color: "yellow",
+    },
+    {
+      level: "Alerta",
+      height: thresholds.alert,
+      description: "Nivel elevado. Posible riesgo de inundación en zonas bajas.",
+      color: "orange",
+    },
+    {
+      level: "Crítico",
+      height: thresholds.critical,
+      description: "Nivel crítico. Evacuación recomendada en zonas de riesgo.",
+      color: "red",
+    },
+  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -99,7 +108,9 @@ export default function AlertLevelsModal() {
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-lg">{threshold.level}</h3>
                 <span className="font-mono font-bold">
-                  {threshold.height > 0 ? `≥ ${threshold.height}m` : "< 2.5m"}
+                  {threshold.height > 0 
+                    ? `≥ ${threshold.height.toFixed(1)}m` 
+                    : `< ${thresholds.warning.toFixed(1)}m`}
                 </span>
               </div>
               <p className="text-sm opacity-90">{threshold.description}</p>
