@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import { trackPageView } from "@/utils/analytics";
 
 export default function Analytics() {
@@ -14,6 +15,6 @@ export default function Analytics() {
     }
   }, [pathname]);
 
-  return null;
+  return <VercelAnalytics />;
 }
 
