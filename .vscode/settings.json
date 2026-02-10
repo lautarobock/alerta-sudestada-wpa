@@ -1,0 +1,10 @@
+{
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+    "workbench.colorCustomizations": {
+        "titleBar.activeBackground": "#D2B48C",
+        "titleBar.activeForeground": "#1a1a1a",
+        "titleBar.inactiveBackground": "#D2B48C99",
+        "titleBar.inactiveForeground": "#1a1a1a99"
+    },
+}

@@ -21,6 +21,16 @@ export interface HistoricalTideData {
     data: TideDataPoint[];
 }
 
+export interface TideReadingExtreme {
+    value: number;
+    moment: Date;
+}
+
+export interface TideReadingsMinMax {
+    min: TideReadingExtreme | null;
+    max: TideReadingExtreme | null;
+}
+
 // Thresholds for alerts (in meters)
 const THRESHOLDS = {
     normal: 0,
@@ -158,6 +168,43 @@ export async function getHistoricalTideData(daysAgo: number = 1): Promise<Histor
         return { data };
     } catch (error) {
         console.error('Error fetching historical tide data from MongoDB:', error);
+        return null;
+    }
+}
+
+/** Historical min and max from tides collection, only type 'reading'. */
+export async function getTideReadingsMinMax(): Promise<TideReadingsMinMax | null> {
+    try {
+        const client = await clientPromise;
+        const db = client.db('alerta-sudestada');
+        const collection = db.collection('tides');
+
+        const [minDoc, maxDoc] = await Promise.all([
+            collection.findOne(
+                { type: 'reading' },
+                { sort: { value: 1 }, projection: { value: 1, moment: 1 } }
+            ) as Promise<{ value?: number; moment?: Date } | null>,
+            collection.findOne(
+                { type: 'reading' },
+                { sort: { value: -1 }, projection: { value: 1, moment: 1 } }
+            ) as Promise<{ value?: number; moment?: Date } | null>,
+        ]);
+
+        const toExtreme = (doc: { value?: number; moment?: Date } | null): TideReadingExtreme | null => {
+            if (!doc || doc.value == null || doc.moment == null) return null;
+            return {
+                value: doc.value,
+                moment: doc.moment instanceof Date ? doc.moment : new Date(doc.moment),
+            };
+        };
+
+        const min = toExtreme(minDoc);
+        const max = toExtreme(maxDoc);
+        if (!min && !max) return null;
+
+        return { min, max };
+    } catch (error) {
+        console.error('Error fetching tide readings min/max from MongoDB:', error);
         return null;
     }
 }

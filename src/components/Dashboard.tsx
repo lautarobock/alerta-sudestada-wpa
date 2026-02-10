@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import Link from "next/link";
-import { getRiverHeight, getForecast, getHistoricalTideData, type RiverHeightData, type HistoricalTideData } from "@/app/actions/riverHeight";
+import { getRiverHeight, getForecast, getHistoricalTideData, getTideReadingsMinMax, type RiverHeightData, type HistoricalTideData, type TideReadingsMinMax } from "@/app/actions/riverHeight";
 import { getWeather } from "@/app/actions/weather";
 import { type WeatherData } from "@/types/weather";
 import { type ForecastData } from "@/types/forecast";
@@ -19,19 +19,22 @@ import FloodAlerts from "@/components/FloodAlerts";
 import AlertLevelsModal from "@/components/AlertLevelsModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import FloodReportForm from "@/components/FloodReportForm";
+import HistoricalMinMaxBox from "@/components/HistoricalMinMaxBox";
 
 interface DashboardProps {
     initialRiverData?: RiverHeightData[] | null;
     initialForecast?: ForecastData | null;
     initialHistoricalData?: HistoricalTideData | null;
     initialWeatherData?: WeatherData | null;
+    initialTideReadingsMinMax?: TideReadingsMinMax | null;
 }
 
 export default function Dashboard({ 
     initialRiverData,
     initialForecast,
     initialHistoricalData,
-    initialWeatherData
+    initialWeatherData,
+    initialTideReadingsMinMax,
 }: DashboardProps) {
     // Use server-provided status initially to avoid hydration mismatch
     const [riverData, setRiverData] = useState<RiverHeightData | null>(initialRiverData?.[0] || null);
@@ -47,6 +50,7 @@ export default function Dashboard({
     const [forecast, setForecast] = useState<ForecastData | null>(initialForecast || null);
     const [historicalData, setHistoricalData] = useState<HistoricalTideData | null>(initialHistoricalData || null);
     const [weatherData, setWeatherData] = useState<WeatherData | null>(initialWeatherData || null);
+    const [tideReadingsMinMax, setTideReadingsMinMax] = useState<TideReadingsMinMax | null>(initialTideReadingsMinMax || null);
     
     const [loading, setLoading] = useState(!initialRiverData);
     const [error, setError] = useState<string | null>(null);
@@ -68,11 +72,12 @@ export default function Dashboard({
         startTransition(async () => {
             try {
                 setError(null);
-                const [riverDataArray, forecastData, historicalTideData, currentWeatherData] = await Promise.all([
+                const [riverDataArray, forecastData, historicalTideData, currentWeatherData, minMaxData] = await Promise.all([
                     getRiverHeight(),
                     getForecast(),
                     getHistoricalTideData(),
-                    getWeather()
+                    getWeather(),
+                    getTideReadingsMinMax(),
                 ]);
                 
                 if (!riverDataArray || riverDataArray.length === 0) {
@@ -112,6 +117,7 @@ export default function Dashboard({
                 setForecast(forecastData);
                 setHistoricalData(historicalTideData);
                 setWeatherData(currentWeatherData);
+                setTideReadingsMinMax(minMaxData);
                 
                 const now = new Date();
                 setLastUpdate(now);
@@ -319,7 +325,11 @@ export default function Dashboard({
                     />
                     
                     <WeatherCard data={weatherData} />
-                    <FloodAlerts />
+                    
+                    {/* <FloodAlerts /> */}
+
+                    <HistoricalMinMaxBox data={tideReadingsMinMax} />
+                    
                     <FloodReportForm />
 
                     <div className="w-full max-w-2xl mx-auto">
