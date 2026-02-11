@@ -29,6 +29,8 @@ export interface TideReadingExtreme {
 export interface TideReadingsMinMax {
     min: TideReadingExtreme | null;
     max: TideReadingExtreme | null;
+    /** Number of distinct periods where the curve was above 3m (counts upward crossings) */
+    periodsAbove3mCount: number;
 }
 
 // Thresholds for alerts (in meters)
@@ -179,7 +181,7 @@ export async function getTideReadingsMinMax(): Promise<TideReadingsMinMax | null
         const db = client.db('alerta-sudestada');
         const collection = db.collection('tides');
 
-        const [minDoc, maxDoc] = await Promise.all([
+        const [minDoc, maxDoc, allReadings] = await Promise.all([
             collection.findOne(
                 { type: 'reading' },
                 { sort: { value: 1 }, projection: { value: 1, moment: 1 } }
@@ -188,6 +190,10 @@ export async function getTideReadingsMinMax(): Promise<TideReadingsMinMax | null
                 { type: 'reading' },
                 { sort: { value: -1 }, projection: { value: 1, moment: 1 } }
             ) as Promise<{ value?: number; moment?: Date } | null>,
+            collection.find(
+                { type: 'reading' },
+                { sort: { moment: 1 }, projection: { value: 1, moment: 1 } }
+            ).toArray() as Promise<{ value?: number; moment?: Date }[]>,
         ]);
 
         const toExtreme = (doc: { value?: number; moment?: Date } | null): TideReadingExtreme | null => {
@@ -202,7 +208,24 @@ export async function getTideReadingsMinMax(): Promise<TideReadingsMinMax | null
         const max = toExtreme(maxDoc);
         if (!min && !max) return null;
 
-        return { min, max };
+        // Count periods above 3m: count upward crossings (from <=3m to >3m)
+        let periodsAbove3mCount = 0;
+        let wasBelowOrEqual3m = true; // Start assuming we're below/equal to 3m
+        
+        for (const reading of allReadings) {
+            if (reading.value == null) continue;
+            
+            const isAbove3m = reading.value > 3;
+            
+            // Count transition from <=3m to >3m (upward crossing)
+            if (wasBelowOrEqual3m && isAbove3m) {
+                periodsAbove3mCount++;
+            }
+            
+            wasBelowOrEqual3m = !isAbove3m;
+        }
+
+        return { min, max, periodsAbove3mCount };
     } catch (error) {
         console.error('Error fetching tide readings min/max from MongoDB:', error);
         return null;

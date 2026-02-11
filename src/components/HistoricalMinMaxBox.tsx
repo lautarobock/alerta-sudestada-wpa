@@ -20,7 +20,7 @@ function formatMoment(d: Date): string {
 }
 
 export default function HistoricalMinMaxBox({ data }: HistoricalMinMaxBoxProps) {
-    if (!data || (!data.min && !data.max)) return null;
+    if (!data || (!data.min && !data.max && data.periodsAbove3mCount === 0)) return null;
 
     return (
         <div className="w-full max-w-2xl mx-auto">
@@ -28,7 +28,7 @@ export default function HistoricalMinMaxBox({ data }: HistoricalMinMaxBoxProps) 
                 <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                     <span>📊</span> Histórico de lecturas
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {data.min && (
                         <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-200">
                             <p className="text-sm font-medium text-cyan-700 mb-1">Mínimo</p>
@@ -47,6 +47,13 @@ export default function HistoricalMinMaxBox({ data }: HistoricalMinMaxBoxProps) 
                             <p className="text-xs text-blue-600 mt-1">{formatMoment(data.max.moment)}</p>
                         </div>
                     )}
+                    <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <p className="text-sm font-medium text-amber-700 mb-1">Períodos &gt; 3 m</p>
+                        <p className="text-2xl font-bold text-amber-900">
+                            {data.periodsAbove3mCount ?? 0}
+                        </p>
+                        <p className="text-xs text-amber-600 mt-1">veces que superó 3m</p>
+                    </div>
                 </div>
             </div>
         </div>
