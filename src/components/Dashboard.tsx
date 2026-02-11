@@ -328,7 +328,7 @@ export default function Dashboard({
                     
                     {/* <FloodAlerts /> */}
 
-                    <HistoricalMinMaxBox data={tideReadingsMinMax} />
+                    <HistoricalMinMaxBox initialData={tideReadingsMinMax} />
                     
                     <FloodReportForm />
 

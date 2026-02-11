@@ -26,11 +26,15 @@ export interface TideReadingExtreme {
     moment: Date;
 }
 
+export type TimeFilter = '1month' | '6months' | 'year' | 'historic';
+
 export interface TideReadingsMinMax {
     min: TideReadingExtreme | null;
     max: TideReadingExtreme | null;
     /** Number of distinct periods where the curve was above 3m (counts upward crossings) */
     periodsAbove3mCount: number;
+    /** First reading date (only set when timeFilter is 'historic') */
+    firstReadingDate?: Date | null;
 }
 
 // Thresholds for alerts (in meters)
@@ -175,32 +179,67 @@ export async function getHistoricalTideData(daysAgo: number = 1): Promise<Histor
 }
 
 /** Historical min and max from tides collection, only type 'reading'. */
-export async function getTideReadingsMinMax(): Promise<TideReadingsMinMax | null> {
+export async function getTideReadingsMinMax(timeFilter: TimeFilter = 'historic'): Promise<TideReadingsMinMax | null> {
     try {
         const client = await clientPromise;
         const db = client.db('alerta-sudestada');
         const collection = db.collection('tides');
 
-        const [minDoc, maxDoc, allReadings] = await Promise.all([
-            collection.findOne(
-                { type: 'reading' },
-                { sort: { value: 1 }, projection: { value: 1, moment: 1 } }
-            ) as Promise<{ value?: number; moment?: Date } | null>,
-            collection.findOne(
-                { type: 'reading' },
-                { sort: { value: -1 }, projection: { value: 1, moment: 1 } }
-            ) as Promise<{ value?: number; moment?: Date } | null>,
-            collection.find(
-                { type: 'reading' },
-                { sort: { moment: 1 }, projection: { value: 1, moment: 1 } }
-            ).toArray() as Promise<{ value?: number; moment?: Date }[]>,
-        ]);
+        // Calculate date filter based on timeFilter
+        let dateFilter: { $gte?: Date } = {};
+        const now = new Date();
+        
+        if (timeFilter === '1month') {
+            dateFilter.$gte = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        } else if (timeFilter === '6months') {
+            dateFilter.$gte = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+        } else if (timeFilter === 'year') {
+            dateFilter.$gte = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        }
+        // 'historic' means no date filter
 
-        const toExtreme = (doc: { value?: number; moment?: Date } | null): TideReadingExtreme | null => {
-            if (!doc || doc.value == null || doc.moment == null) return null;
+        const queryFilter: any = { type: 'reading' };
+        if (dateFilter.$gte) {
+            queryFilter.moment = dateFilter;
+        }
+
+        const allReadings = await collection.find(
+            queryFilter,
+            { sort: { moment: 1 }, projection: { value: 1, moment: 1 } }
+        ).toArray() as { value?: number; moment?: Date }[];
+
+        if (!allReadings || allReadings.length === 0) {
+            return null;
+        }
+
+        // Filter readings to ensure they have valid values
+        const validReadings = allReadings.filter(r => r.value != null && r.moment != null);
+        
+        if (validReadings.length === 0) {
+            return null;
+        }
+
+        // Find min and max from filtered readings
+        let minDoc: { value: number; moment: Date } | null = null;
+        let maxDoc: { value: number; moment: Date } | null = null;
+
+        for (const reading of validReadings) {
+            const value = reading.value!;
+            const moment = reading.moment instanceof Date ? reading.moment : new Date(reading.moment!);
+            
+            if (!minDoc || value < minDoc.value) {
+                minDoc = { value, moment };
+            }
+            if (!maxDoc || value > maxDoc.value) {
+                maxDoc = { value, moment };
+            }
+        }
+
+        const toExtreme = (doc: { value: number; moment: Date } | null): TideReadingExtreme | null => {
+            if (!doc) return null;
             return {
                 value: doc.value,
-                moment: doc.moment instanceof Date ? doc.moment : new Date(doc.moment),
+                moment: doc.moment,
             };
         };
 
@@ -212,10 +251,9 @@ export async function getTideReadingsMinMax(): Promise<TideReadingsMinMax | null
         let periodsAbove3mCount = 0;
         let wasBelowOrEqual3m = true; // Start assuming we're below/equal to 3m
         
-        for (const reading of allReadings) {
-            if (reading.value == null) continue;
-            
-            const isAbove3m = reading.value > 3;
+        for (const reading of validReadings) {
+            const value = reading.value!;
+            const isAbove3m = value > 3;
             
             // Count transition from <=3m to >3m (upward crossing)
             if (wasBelowOrEqual3m && isAbove3m) {
@@ -225,7 +263,18 @@ export async function getTideReadingsMinMax(): Promise<TideReadingsMinMax | null
             wasBelowOrEqual3m = !isAbove3m;
         }
 
-        return { min, max, periodsAbove3mCount };
+        // Get first reading date when using historic filter
+        let firstReadingDate: Date | null = null;
+        if (timeFilter === 'historic' && validReadings.length > 0) {
+            const firstReading = validReadings[0];
+            if (firstReading.moment) {
+                firstReadingDate = firstReading.moment instanceof Date 
+                    ? firstReading.moment 
+                    : new Date(firstReading.moment);
+            }
+        }
+
+        return { min, max, periodsAbove3mCount, firstReadingDate };
     } catch (error) {
         console.error('Error fetching tide readings min/max from MongoDB:', error);
         return null;
