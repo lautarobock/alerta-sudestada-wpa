@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getAlertThresholds, setAlertThresholds, resetAlertThresholds, type AlertThresholds } from "@/utils/alertThresholds";
+import { setSyncState } from "@/utils/syncState";
 import ThresholdSlider from "@/components/ThresholdSlider";
 
 export default function ConfigPage() {
@@ -27,6 +28,7 @@ export default function ConfigPage() {
   const handleSave = () => {
     try {
       setAlertThresholds(thresholds);
+      setSyncState({ thresholds }).catch(() => {});
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
@@ -37,6 +39,7 @@ export default function ConfigPage() {
 
   const handleReset = () => {
     const defaultThresholds = resetAlertThresholds();
+    setSyncState({ thresholds: defaultThresholds }).catch(() => {});
     setThresholds(defaultThresholds);
     setIsSaved(false);
   };

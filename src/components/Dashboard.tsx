@@ -12,7 +12,8 @@ import {
   requestNotificationPermission, 
   showAlertNotification 
 } from "@/utils/backgroundSync";
-import { getStatusFromHeight } from "@/utils/alertThresholds";
+import { getStatusFromHeight, getAlertThresholds } from "@/utils/alertThresholds";
+import { setSyncState } from "@/utils/syncState";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import WeatherCard from "@/components/WeatherCard";
 import FloodAlerts from "@/components/FloodAlerts";
@@ -112,6 +113,11 @@ export default function Dashboard({
                 }
                 
                 previousStatusRef.current = configuredStatus;
+                // Sync to IndexedDB for service worker periodicsync (can't read localStorage)
+                setSyncState({
+                  lastStatus: configuredStatus,
+                  thresholds: getAlertThresholds(),
+                }).catch(() => {});
                 setRiverData(updatedRiverData);
                 riverDataRef.current = updatedRiverData;
                 setForecast(forecastData);
@@ -131,13 +137,15 @@ export default function Dashboard({
         });
     };
 
-    // Initialize: request permissions and register background sync
+    // Initialize: request permissions, register background sync, sync thresholds to IndexedDB
     useEffect(() => {
         setIsMounted(true);
         requestNotificationPermission();
         if ("serviceWorker" in navigator) {
             registerPeriodicSync();
         }
+        // Sync thresholds to IndexedDB so service worker can read them (no localStorage access)
+        setSyncState({ thresholds: getAlertThresholds() }).catch(() => {});
         // If no initial data, fetch
         if (!initialRiverData) {
             fetchData();
@@ -157,7 +165,14 @@ export default function Dashboard({
                 setRiverData(updatedData);
                 riverDataRef.current = updatedData;
                 previousStatusRef.current = configuredStatus;
+            } else {
+                previousStatusRef.current = configuredStatus;
             }
+            // Sync initial state to IndexedDB for service worker
+            setSyncState({
+                lastStatus: previousStatusRef.current,
+                thresholds: getAlertThresholds(),
+            }).catch(() => {});
         }
     }, [isMounted]); // Only run once after mount
 
@@ -184,6 +199,8 @@ export default function Dashboard({
     // Handle threshold updates separately
     useEffect(() => {
         const handleThresholdUpdate = () => {
+            const thresholds = getAlertThresholds();
+            setSyncState({ thresholds }).catch(() => {});
             // Recalculate status when thresholds change
             if (riverDataRef.current) {
                 const newStatus = getStatusFromHeight(riverDataRef.current.height);
