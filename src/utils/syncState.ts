@@ -1,22 +1,24 @@
 /**
  * IndexedDB sync state for service worker background sync.
- * The service worker cannot access localStorage, so we store thresholds and lastStatus
- * in IndexedDB for the periodicsync handler to read.
+ * The service worker cannot access localStorage, so we store thresholds and
+ * lastAlertedForecastMoment in IndexedDB for the periodicsync handler to read.
+ * Alerts are based on forecast (not current reading) and only once per forecast update.
  */
 
 const DB_NAME = "alerta-sudestada-sync";
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bump for schema change: lastStatus -> lastAlertedForecastMoment
 const STORE_NAME = "state";
 const KEY = "sync-state";
 
 export interface SyncState {
   thresholds: { warning: number; alert: number; critical: number };
-  lastStatus: "normal" | "warning" | "alert" | "critical";
+  /** ISO string of forecast.moment we last alerted for - only alert once per forecast update */
+  lastAlertedForecastMoment: string | null;
 }
 
 const DEFAULT_STATE: SyncState = {
   thresholds: { warning: 2.5, alert: 3.0, critical: 3.5 },
-  lastStatus: "normal",
+  lastAlertedForecastMoment: null,
 };
 
 function openDB(): Promise<IDBDatabase> {
@@ -50,8 +52,14 @@ export async function getSyncState(): Promise<SyncState> {
       request.onsuccess = () => {
         db.close();
         const result = request.result;
-        if (result && typeof result.thresholds === "object" && typeof result.lastStatus === "string") {
-          resolve(result as SyncState);
+        if (result && typeof result.thresholds === "object") {
+          resolve({
+            thresholds: result.thresholds,
+            lastAlertedForecastMoment:
+              typeof result.lastAlertedForecastMoment === "string"
+                ? result.lastAlertedForecastMoment
+                : null,
+          } as SyncState);
         } else {
           resolve(DEFAULT_STATE);
         }
@@ -69,7 +77,10 @@ export async function setSyncState(state: Partial<SyncState>): Promise<void> {
   const current = await getSyncState();
   const merged: SyncState = {
     thresholds: state.thresholds ?? current.thresholds,
-    lastStatus: state.lastStatus ?? current.lastStatus,
+    lastAlertedForecastMoment:
+      state.lastAlertedForecastMoment !== undefined
+        ? state.lastAlertedForecastMoment
+        : current.lastAlertedForecastMoment,
   };
   const db = await openDB();
   return new Promise((resolve, reject) => {

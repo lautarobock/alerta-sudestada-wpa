@@ -12,8 +12,8 @@ import {
   requestNotificationPermission, 
   showAlertNotification 
 } from "@/utils/backgroundSync";
-import { getStatusFromHeight, getAlertThresholds } from "@/utils/alertThresholds";
-import { setSyncState } from "@/utils/syncState";
+import { getStatusFromHeight, getAlertThresholds, getWorstStatusFromForecast } from "@/utils/alertThresholds";
+import { setSyncState, getSyncState } from "@/utils/syncState";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import WeatherCard from "@/components/WeatherCard";
 import FloodAlerts from "@/components/FloodAlerts";
@@ -63,9 +63,6 @@ export default function Dashboard({
     const [isMounted, setIsMounted] = useState(false);
     const isVisible = usePageVisibility();
     
-    const previousStatusRef = useRef<RiverHeightData["status"] | null>(
-        initialRiverData?.[0]?.status || null
-    );
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const previousHeightRef = useRef<number | null>(initialRiverData?.[1]?.height || null);
 
@@ -95,29 +92,38 @@ export default function Dashboard({
                     status: configuredStatus,
                 };
 
-                // Check if status changed to alert/critical and show notification
-                if (previousStatusRef.current && 
-                    previousStatusRef.current !== configuredStatus &&
-                    (configuredStatus === "alert" || configuredStatus === "critical")) {
-                    const statusLabels = {
+                // Forecast-based alert: only if one or more forecast values exceed thresholds, and only once per forecast update
+                const thresholds = getAlertThresholds();
+                const worstForecast =
+                  forecastData && forecastData.values?.length
+                    ? getWorstStatusFromForecast(forecastData.values, thresholds)
+                    : null;
+                if (
+                  worstForecast &&
+                  (worstForecast.status === "alert" || worstForecast.status === "critical")
+                ) {
+                  const forecastMoment = forecastData?.moment?.toISOString?.() ?? null;
+                  if (forecastMoment) {
+                    const syncState = await getSyncState().catch(() => null);
+                    if (syncState?.lastAlertedForecastMoment !== forecastMoment) {
+                      const statusLabels = {
                         alert: "Alerta",
                         critical: "Crítico",
                         warning: "Advertencia",
-                        normal: "Normal"
-                    };
-                    await showAlertNotification(
-                        `🚨 ${statusLabels[configuredStatus]} - Río Luján`,
-                        `El nivel del río ha alcanzado ${latestRiverData.height}m. Estado: ${statusLabels[configuredStatus]}`,
-                        { height: latestRiverData.height, status: configuredStatus }
-                    );
+                        normal: "Normal",
+                      };
+                      await showAlertNotification(
+                        `🚨 ${statusLabels[worstForecast.status]} - Río Luján (pronóstico)`,
+                        `El pronóstico indica que uno o más valores superarán ${worstForecast.maxValue.toFixed(2)}m. Estado: ${statusLabels[worstForecast.status]}`,
+                        { height: worstForecast.maxValue, status: worstForecast.status }
+                      );
+                      setSyncState({ lastAlertedForecastMoment: forecastMoment }).catch(() => {});
+                    }
+                  }
                 }
-                
-                previousStatusRef.current = configuredStatus;
-                // Sync to IndexedDB for service worker periodicsync (can't read localStorage)
-                setSyncState({
-                  lastStatus: configuredStatus,
-                  thresholds: getAlertThresholds(),
-                }).catch(() => {});
+
+                // Sync thresholds to IndexedDB for service worker
+                setSyncState({ thresholds }).catch(() => {});
                 setRiverData(updatedRiverData);
                 riverDataRef.current = updatedRiverData;
                 setForecast(forecastData);
@@ -164,15 +170,9 @@ export default function Dashboard({
                 const updatedData = { ...riverData, status: configuredStatus };
                 setRiverData(updatedData);
                 riverDataRef.current = updatedData;
-                previousStatusRef.current = configuredStatus;
-            } else {
-                previousStatusRef.current = configuredStatus;
             }
-            // Sync initial state to IndexedDB for service worker
-            setSyncState({
-                lastStatus: previousStatusRef.current,
-                thresholds: getAlertThresholds(),
-            }).catch(() => {});
+            // Sync thresholds to IndexedDB for service worker
+            setSyncState({ thresholds: getAlertThresholds() }).catch(() => {});
         }
     }, [isMounted]); // Only run once after mount
 

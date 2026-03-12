@@ -84,11 +84,38 @@ export function resetAlertThresholds(): AlertThresholds {
 /**
  * Calculate alert status based on height and configured thresholds
  */
-export function getStatusFromHeight(height: number): "normal" | "warning" | "alert" | "critical" {
-  const thresholds = getAlertThresholds();
-  
-  if (height >= thresholds.critical) return "critical";
-  if (height >= thresholds.alert) return "alert";
-  if (height >= thresholds.warning) return "warning";
+export function getStatusFromHeight(
+  height: number,
+  thresholds?: AlertThresholds
+): "normal" | "warning" | "alert" | "critical" {
+  const t = thresholds ?? getAlertThresholds();
+  if (height >= t.critical) return "critical";
+  if (height >= t.alert) return "alert";
+  if (height >= t.warning) return "warning";
   return "normal";
+}
+
+/**
+ * Get worst alert status from forecast values (for forecast-based notifications).
+ * Returns null if no values, or { status, maxValue } for the worst status among all predictions.
+ */
+export function getWorstStatusFromForecast(
+  values: { value: number }[],
+  thresholds?: AlertThresholds
+): { status: "normal" | "warning" | "alert" | "critical"; maxValue: number } | null {
+  if (!values || values.length === 0) return null;
+  const t = thresholds ?? getAlertThresholds();
+  const statusOrder = { normal: 0, warning: 1, alert: 2, critical: 3 } as const;
+  let worstStatus: "normal" | "warning" | "alert" | "critical" = "normal";
+  let maxValue = 0;
+  for (const v of values) {
+    const s = getStatusFromHeight(v.value, t);
+    if (statusOrder[s] > statusOrder[worstStatus]) {
+      worstStatus = s;
+      maxValue = v.value;
+    } else if (s === worstStatus && v.value > maxValue) {
+      maxValue = v.value;
+    }
+  }
+  return { status: worstStatus, maxValue };
 }
