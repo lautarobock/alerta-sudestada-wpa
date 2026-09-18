@@ -75,25 +75,41 @@ export default function ConfigPage() {
   const handleActivatePush = async () => {
     setPushLoading(true);
     setPushFeedback(null);
-    const result = await subscribeToWebPushDetailed();
-    setPermissionStatus(getNotificationPermissionStatus());
-    setPushFeedback({
-      type: result.ok ? "success" : "error",
-      text: result.message,
-    });
-    setPushLoading(false);
+    try {
+      const result = await subscribeToWebPushDetailed();
+      setPermissionStatus(getNotificationPermissionStatus());
+      setPushFeedback({
+        type: result.ok ? "success" : "error",
+        text: result.message,
+      });
+    } catch (e) {
+      setPushFeedback({
+        type: "error",
+        text: e instanceof Error ? e.message : "Error inesperado al activar notificaciones.",
+      });
+    } finally {
+      setPushLoading(false);
+    }
   };
 
   const handleDeactivatePush = async () => {
     setPushLoading(true);
     setPushFeedback(null);
-    const result = await unsubscribeFromWebPush();
-    setPermissionStatus(getNotificationPermissionStatus());
-    setPushFeedback({
-      type: result.ok ? "info" : "error",
-      text: result.message,
-    });
-    setPushLoading(false);
+    try {
+      const result = await unsubscribeFromWebPush();
+      setPermissionStatus(getNotificationPermissionStatus());
+      setPushFeedback({
+        type: result.ok ? "info" : "error",
+        text: result.message,
+      });
+    } catch (e) {
+      setPushFeedback({
+        type: "error",
+        text: e instanceof Error ? e.message : "Error inesperado.",
+      });
+    } finally {
+      setPushLoading(false);
+    }
   };
 
   const handleAuth = async (e: React.FormEvent) => {

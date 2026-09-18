@@ -4,6 +4,8 @@ export type WebPushSubscribeResult =
   | { ok: true; message: string }
   | { ok: false; message: string };
 
+const SW_WAIT_MS = 25_000;
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -13,6 +15,62 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} (timeout ${ms / 1000}s)`));
+    }, ms);
+    promise
+      .then((v) => {
+        clearTimeout(timer);
+        resolve(v);
+      })
+      .catch((e) => {
+        clearTimeout(timer);
+        reject(e);
+      });
+  });
+}
+
+type WorkboxWindow = {
+  register: () => Promise<ServiceWorkerRegistration | undefined>;
+};
+
+/**
+ * next-pwa registers via workbox-window; `navigator.serviceWorker.ready` hangs
+ * forever if no SW is active yet. Register explicitly and wait with a timeout.
+ */
+async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
+  const existing = await navigator.serviceWorker.getRegistration("/");
+  if (existing?.active) {
+    return existing;
+  }
+
+  const workbox = (window as unknown as { workbox?: WorkboxWindow }).workbox;
+  if (workbox?.register) {
+    const fromWorkbox = await withTimeout(
+      workbox.register(),
+      SW_WAIT_MS,
+      "Registro del service worker (workbox)"
+    );
+    if (fromWorkbox?.active) {
+      return fromWorkbox;
+    }
+  }
+
+  await withTimeout(
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }),
+    SW_WAIT_MS,
+    "Registro de /sw.js"
+  );
+
+  return withTimeout(
+    navigator.serviceWorker.ready,
+    SW_WAIT_MS,
+    "Service worker no activo"
+  );
 }
 
 export function getNotificationPermissionStatus():
@@ -66,7 +124,11 @@ export async function subscribeToWebPushDetailed(): Promise<WebPushSubscribeResu
     };
   }
 
-  const keyRes = await fetch("/api/push/vapid-public-key");
+  const keyRes = await withTimeout(
+    fetch("/api/push/vapid-public-key"),
+    15_000,
+    "Clave VAPID"
+  );
   if (!keyRes.ok) {
     return {
       ok: false,
@@ -84,12 +146,12 @@ export async function subscribeToWebPushDetailed(): Promise<WebPushSubscribeResu
 
   let registration: ServiceWorkerRegistration;
   try {
-    registration = await navigator.serviceWorker.ready;
-  } catch {
+    registration = await getServiceWorkerRegistration();
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
     return {
       ok: false,
-      message:
-        "Service worker no listo. Recargá la página o reinstalá la PWA desde Chrome.",
+      message: `${detail}. Cerrá la app, abrila de nuevo desde el ícono instalado, o reinstalá la PWA.`,
     };
   }
 
@@ -105,7 +167,7 @@ export async function subscribeToWebPushDetailed(): Promise<WebPushSubscribeResu
       const msg = e instanceof Error ? e.message : String(e);
       return {
         ok: false,
-        message: `No se pudo suscribir al push: ${msg}. Probá reinstalar la PWA si cambió la configuración del servidor.`,
+        message: `No se pudo suscribir al push: ${msg}. Probá reinstalar la PWA si cambió VAPID en el servidor.`,
       };
     }
   }
@@ -115,15 +177,19 @@ export async function subscribeToWebPushDetailed(): Promise<WebPushSubscribeResu
     return { ok: false, message: "Suscripción del navegador incompleta." };
   }
 
-  const res = await fetch("/api/push/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({
-      endpoint: json.endpoint,
-      keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+  const res = await withTimeout(
+    fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        endpoint: json.endpoint,
+        keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+      }),
     }),
-  });
+    15_000,
+    "Guardar suscripción en servidor"
+  );
 
   if (!res.ok) {
     let detail = "";
@@ -154,38 +220,49 @@ export async function subscribeToWebPush(): Promise<boolean> {
 /** Re-associate current device subscription with logged-in user */
 export async function syncPushSubscriptionWithServer(): Promise<void> {
   if (!("serviceWorker" in navigator)) return;
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription();
-  if (!subscription) return;
-  const json = subscription.toJSON();
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
-  await fetch("/api/push/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({
-      endpoint: json.endpoint,
-      keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-    }),
-  });
+  try {
+    const registration = await getServiceWorkerRegistration();
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return;
+    const json = subscription.toJSON();
+    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
+    await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        endpoint: json.endpoint,
+        keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+      }),
+    });
+  } catch {
+    /* ignore on login sync */
+  }
 }
 
 export async function unsubscribeFromWebPush(): Promise<WebPushSubscribeResult> {
   if (!("serviceWorker" in navigator)) {
     return { ok: false, message: "Service worker no disponible." };
   }
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription();
-  if (!subscription) {
-    return { ok: true, message: "No había suscripción activa en este dispositivo." };
+  try {
+    const registration = await getServiceWorkerRegistration();
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      return { ok: true, message: "No había suscripción activa en este dispositivo." };
+    }
+    const endpoint = subscription.endpoint;
+    await fetch("/api/push/subscribe", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ endpoint }),
+    });
+    await subscription.unsubscribe();
+    return { ok: true, message: "Notificaciones desactivadas en este dispositivo." };
+  } catch (e) {
+    return {
+      ok: false,
+      message: e instanceof Error ? e.message : "Error al desactivar",
+    };
   }
-  const endpoint = subscription.endpoint;
-  await fetch("/api/push/subscribe", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ endpoint }),
-  });
-  await subscription.unsubscribe();
-  return { ok: true, message: "Notificaciones desactivadas en este dispositivo." };
 }
