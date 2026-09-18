@@ -2,52 +2,88 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getAlertThresholds, setAlertThresholds, resetAlertThresholds, type AlertThresholds } from "@/utils/alertThresholds";
-import { setSyncState } from "@/utils/syncState";
 import ThresholdSlider from "@/components/ThresholdSlider";
+import { useAuth } from "@/hooks/useAuth";
+import { DEFAULT_THRESHOLDS, type AlertThresholds } from "@/lib/thresholds";
+import { syncPushSubscriptionWithServer } from "@/utils/webPush";
 
 export default function ConfigPage() {
-  const [thresholds, setThresholds] = useState<AlertThresholds>({
-    warning: 2.5,
-    alert: 3.0,
-    critical: 3.5,
-  });
+  const {
+    user,
+    thresholds,
+    loading,
+    isLoggedIn,
+    register,
+    login,
+    logout,
+    saveThresholds,
+  } = useAuth();
+
+  const [draft, setDraft] = useState<AlertThresholds>(DEFAULT_THRESHOLDS);
   const [isSaved, setIsSaved] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("register");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
 
   useEffect(() => {
-    // Load thresholds from localStorage
-    const saved = getAlertThresholds();
-    setThresholds(saved);
-  }, []);
+    setDraft(thresholds);
+  }, [thresholds]);
 
-  const handleThresholdChange = (newThresholds: AlertThresholds) => {
-    setThresholds(newThresholds);
-    setIsSaved(false);
-  };
-
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!isLoggedIn) return;
     try {
-      setAlertThresholds(thresholds);
-      setSyncState({ thresholds }).catch(() => {});
+      await saveThresholds(draft);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
-      console.error("Error saving thresholds:", error);
-      alert("Error al guardar la configuración. Por favor, verifica los valores.");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Error al guardar la configuración."
+      );
     }
   };
 
   const handleReset = () => {
-    const defaultThresholds = resetAlertThresholds();
-    setSyncState({ thresholds: defaultThresholds }).catch(() => {});
-    setThresholds(defaultThresholds);
+    setDraft(DEFAULT_THRESHOLDS);
     setIsSaved(false);
   };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthLoading(true);
+    try {
+      if (authMode === "register") {
+        await register({ email, password, firstName, lastName });
+      } else {
+        await login(email, password);
+      }
+      await syncPushSubscriptionWithServer();
+      setPassword("");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Error");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-600">
+        Cargando configuración…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold text-gray-800">Configuración</h1>
@@ -60,23 +96,127 @@ export default function ConfigPage() {
             </Link>
           </div>
           <p className="text-gray-600">
-            Configura los límites de alerta para el nivel del río. Arrastra los puntos en el slider
-            para ajustar los valores.
+            Los umbrales por defecto vienen del servidor. Para personalizarlos y
+            usarlos en todos tus dispositivos, creá una cuenta.
           </p>
         </div>
 
-        {/* Configuration Card */}
+        {!isLoggedIn && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              Cuenta (opcional)
+            </h2>
+            <div className="flex gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => setAuthMode("register")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  authMode === "register"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                Registrarse
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode("login")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  authMode === "login"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                Iniciar sesión
+              </button>
+            </div>
+            <form onSubmit={handleAuth} className="space-y-3">
+              <input
+                type="email"
+                required
+                placeholder="Email *"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              />
+              <input
+                type="password"
+                required
+                minLength={8}
+                placeholder="Contraseña (mín. 8 caracteres) *"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              />
+              {authMode === "register" && (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Nombre (opcional)"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Apellido (opcional)"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                </>
+              )}
+              {authError && (
+                <p className="text-red-600 text-sm">{authError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:opacity-70"
+              >
+                {authLoading
+                  ? "Procesando…"
+                  : authMode === "register"
+                    ? "Crear cuenta"
+                    : "Entrar"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {isLoggedIn && user && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-green-900 text-sm">
+              Sesión: <span className="font-medium">{user.email}</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="text-sm text-green-800 underline hover:text-green-950"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        )}
+
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-            Límites de Alerta
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+            Límites de alerta
           </h2>
+          {!isLoggedIn && (
+            <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm mb-4">
+              Solo lectura: valores por defecto del servidor. Creá una cuenta para
+              editarlos y sincronizarlos entre dispositivos.
+            </p>
+          )}
 
           <ThresholdSlider
             min={0}
             max={5}
             step={0.1}
-            values={thresholds}
-            onChange={handleThresholdChange}
+            values={isLoggedIn ? draft : thresholds}
+            onChange={isLoggedIn ? setDraft : () => {}}
+            disabled={!isLoggedIn}
             labels={{
               warning: "Advertencia",
               alert: "Alerta",
@@ -84,37 +224,37 @@ export default function ConfigPage() {
             }}
           />
 
-          {/* Action Buttons */}
-          <div className="flex gap-4 mt-8">
-            <button
-              onClick={handleSave}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors shadow-md"
-            >
-              {isSaved ? "✓ Guardado" : "Guardar Cambios"}
-            </button>
-            <button
-              onClick={handleReset}
-              className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
-            >
-              Restablecer
-            </button>
-          </div>
+          {isLoggedIn && (
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={handleSave}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors shadow-md"
+              >
+                {isSaved ? "✓ Guardado" : "Guardar cambios"}
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+              >
+                Restablecer defaults
+              </button>
+            </div>
+          )}
 
           {isSaved && (
             <div className="mt-4 p-3 bg-green-100 border border-green-300 text-green-800 rounded-lg text-sm">
-              ✓ Configuración guardada exitosamente
+              ✓ Configuración guardada en tu cuenta
             </div>
           )}
         </div>
 
-        {/* Info Card */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <h3 className="font-semibold text-blue-900 mb-2">ℹ️ Información</h3>
+          <h3 className="font-semibold text-blue-900 mb-2">Notificaciones push</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Los valores se guardan en tu navegador (localStorage)</li>
-            <li>• Los cambios afectarán las notificaciones y el estado de las alertas</li>
-            <li>• Asegúrate de que los valores estén en orden creciente</li>
-            <li>• Los valores se miden en metros (m)</li>
+            <li>• Las alertas se envían desde el servidor según el pronóstico</li>
+            <li>• Sin cuenta: umbrales globales del servidor</li>
+            <li>• Con cuenta: tus umbrales en todos los dispositivos donde inicies sesión</li>
+            <li>• Cada dispositivo tiene su propia suscripción push</li>
           </ul>
         </div>
       </div>

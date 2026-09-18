@@ -17,6 +17,7 @@ interface ThresholdSliderProps {
     alert: string;
     critical: string;
   };
+  disabled?: boolean;
 }
 
 export default function ThresholdSlider({
@@ -26,6 +27,7 @@ export default function ThresholdSlider({
   values,
   onChange,
   labels,
+  disabled = false,
 }: ThresholdSliderProps) {
   const [isDragging, setIsDragging] = useState<"warning" | "alert" | "critical" | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -46,6 +48,7 @@ export default function ThresholdSlider({
   );
 
   const handleMouseDown = (type: "warning" | "alert" | "critical") => {
+    if (disabled) return;
     setIsDragging(type);
   };
 
@@ -153,7 +156,7 @@ export default function ThresholdSlider({
     <div className="w-full py-8">
       <div
         ref={sliderRef}
-        className="relative h-2 bg-gray-200 rounded-full cursor-pointer"
+        className={`relative h-2 bg-gray-200 rounded-full ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
         style={{ touchAction: "none" }}
       >
         {/* Track segments */}

@@ -8,21 +8,18 @@ A Progressive Web App (PWA) for monitoring river height with real-time flood ale
 - 🚨 Flood alert system with multiple threshold levels
 - 📱 Progressive Web App - installable on mobile and desktop
 - 🔄 Auto-refresh every 30 seconds (when app is in foreground)
-- 🔔 Push notifications for critical alerts (when app is in background)
-- 📡 Background sync support for periodic updates
+- 🔔 Server Web Push alerts based on tide forecast (not current reading)
+- 👤 Optional accounts to sync custom thresholds across devices
 - 📊 Visual gauge showing current river level
 - 🎨 Modern, responsive UI
 
-### Background Behavior
+### Notifications (Web Push)
 
-The app is designed to work efficiently in both foreground and background:
+Push notifications are sent **from the server** when the latest **forecast** exceeds alert thresholds. The external data writer should call the check endpoint after each update (~every 10 minutes).
 
-- **Foreground**: Updates every 30 seconds automatically
-- **Background**: 
-  - Uses Periodic Background Sync API (when supported) to check for updates periodically
-  - Sends push notifications when river height reaches alert or critical levels
-  - Automatically fetches latest data when app returns to foreground
-- **Notifications**: Users receive alerts when the river height status changes to "Alert" or "Critical"
+- **Anonymous users**: global default thresholds (2.5 / 3.0 / 3.5 m)
+- **Registered users**: custom thresholds stored in MongoDB, synced on all devices where they log in
+- Each device has its own push subscription; one notification per forecast update per subscription
 
 ## Getting Started
 
@@ -52,17 +49,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 2. Click it to install the app
 3. The app will open in its own window
 
-### Background Monitoring & Notifications
-
-After installing the app, you'll be prompted to allow notifications. Granting permission enables:
-- **Background monitoring**: The app can check for river height updates even when closed
-- **Critical alerts**: You'll receive notifications when the river reaches alert or critical levels
-- **Automatic updates**: When you reopen the app, it will immediately fetch the latest data
-
-**Note**: Background sync capabilities vary by browser and platform:
-- **Chrome/Edge**: Full support for Periodic Background Sync
-- **Firefox**: Limited background sync support
-- **Safari (iOS)**: Limited background capabilities, but notifications work
+After installing the app, allow notifications when prompted. The browser registers a Web Push subscription with the server.
 
 ## PWA Icons
 
@@ -80,8 +67,21 @@ The app uses MongoDB to store and retrieve river height data. Follow these steps
 
 Create a `.env.local` file in the root directory with your MongoDB connection string:
 
+Copy `.env.example` to `.env.local` and fill in values:
+
 ```env
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
+AUTH_SECRET=your-long-random-secret
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
+PUSH_WEBHOOK_SECRET=shared-secret-with-data-writer
+```
+
+Generate VAPID keys:
+
+```bash
+npx web-push generate-vapid-keys
 ```
 
 For local MongoDB:
@@ -125,6 +125,32 @@ const db = client.db('your-database-name'); // Change if needed
 - **Warning**: ≥ 2.5m
 - **Alert**: ≥ 3.0m
 - **Critical**: ≥ 3.5m
+
+## Push webhook (external data writer)
+
+After writing forecast data to MongoDB, call:
+
+```http
+POST https://<your-host>/api/push/check
+Authorization: Bearer <PUSH_WEBHOOK_SECRET>
+Content-Type: application/json
+```
+
+Response example:
+
+```json
+{
+  "success": true,
+  "forecastMoment": "2026-03-12T12:00:00.000Z",
+  "subscriptionsChecked": 5,
+  "notificationsSent": 2,
+  "skipped": 3,
+  "errors": 0,
+  "notified": true
+}
+```
+
+The endpoint is idempotent per subscription and forecast `moment`: it only sends when the forecast is new for that device and at least one predicted value exceeds that subscriber's alert/critical thresholds.
 
 ## Building for Production
 

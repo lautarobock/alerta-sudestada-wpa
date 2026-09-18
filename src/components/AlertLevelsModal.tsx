@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAlertThresholds } from "@/utils/alertThresholds";
+import { useAuth } from "@/hooks/useAuth";
+import { DEFAULT_THRESHOLDS } from "@/lib/thresholds";
 
 interface AlertThreshold {
   level: string;
@@ -18,24 +19,18 @@ const colorClasses = {
 };
 
 export default function AlertLevelsModal() {
+  const { thresholds: authThresholds } = useAuth();
+  const thresholds = authThresholds ?? DEFAULT_THRESHOLDS;
   const [isOpen, setIsOpen] = useState(false);
-  const [thresholds, setThresholds] = useState(() => getAlertThresholds());
 
   useEffect(() => {
     const handleOpen = () => {
       setIsOpen(true);
     };
 
-    const handleThresholdUpdate = () => {
-      setThresholds(getAlertThresholds());
-    };
-
-    window.addEventListener('openAlertLevelsModal', handleOpen);
-    window.addEventListener('thresholdsUpdated', handleThresholdUpdate);
-    
+    window.addEventListener("openAlertLevelsModal", handleOpen);
     return () => {
-      window.removeEventListener('openAlertLevelsModal', handleOpen);
-      window.removeEventListener('thresholdsUpdated', handleThresholdUpdate);
+      window.removeEventListener("openAlertLevelsModal", handleOpen);
     };
   }, []);
 
@@ -122,8 +117,8 @@ export default function AlertLevelsModal() {
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="font-semibold text-blue-900 mb-2">📱 Notificaciones</h3>
             <p className="text-sm text-blue-800">
-              Esta aplicación se actualiza automáticamente cada 30 segundos. 
-              En caso de alerta o nivel crítico, recibirás notificaciones.
+              Las alertas push se envían desde el servidor según el pronóstico
+              de marea. Permití notificaciones e instalá la app como PWA.
             </p>
           </div>
         </div>

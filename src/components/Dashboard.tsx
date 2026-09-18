@@ -7,16 +7,11 @@ import { getWeather } from "@/app/actions/weather";
 import { type WeatherData } from "@/types/weather";
 import { type ForecastData } from "@/types/forecast";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
-import { 
-  registerPeriodicSync, 
-  requestNotificationPermission, 
-  showAlertNotification 
-} from "@/utils/backgroundSync";
-import { getStatusFromHeight, getAlertThresholds, getWorstStatusFromForecast } from "@/utils/alertThresholds";
-import { setSyncState, getSyncState } from "@/utils/syncState";
+import { useAuth } from "@/hooks/useAuth";
+import { getStatusFromHeight } from "@/utils/alertThresholds";
+import { subscribeToWebPush } from "@/utils/webPush";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import WeatherCard from "@/components/WeatherCard";
-import FloodAlerts from "@/components/FloodAlerts";
 import AlertLevelsModal from "@/components/AlertLevelsModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import FloodReportForm from "@/components/FloodReportForm";
@@ -37,13 +32,11 @@ export default function Dashboard({
     initialWeatherData,
     initialTideReadingsMinMax,
 }: DashboardProps) {
-    // Use server-provided status initially to avoid hydration mismatch
+    const { thresholds, refresh: refreshAuth } = useAuth();
+
     const [riverData, setRiverData] = useState<RiverHeightData | null>(initialRiverData?.[0] || null);
-    
-    // Initialize ref with initial data
     const riverDataRef = useRef<RiverHeightData | null>(initialRiverData?.[0] || null);
     
-    // Keep ref in sync with state
     useEffect(() => {
         riverDataRef.current = riverData;
     }, [riverData]);
@@ -59,12 +52,17 @@ export default function Dashboard({
     const [timeSinceUpdate, setTimeSinceUpdate] = useState<number>(0);
     const [formattedTimestamp, setFormattedTimestamp] = useState<string>("");
     
-    const [isPending, startTransition] = useTransition();
+    const [, startTransition] = useTransition();
     const [isMounted, setIsMounted] = useState(false);
     const isVisible = usePageVisibility();
     
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const previousHeightRef = useRef<number | null>(initialRiverData?.[1]?.height || null);
+    const thresholdsRef = useRef(thresholds);
+
+    useEffect(() => {
+        thresholdsRef.current = thresholds;
+    }, [thresholds]);
 
     const fetchData = async () => {
         startTransition(async () => {
@@ -85,45 +83,15 @@ export default function Dashboard({
                 const latestRiverData = riverDataArray[0];
                 const secondLatestRiverData = riverDataArray.length > 1 ? riverDataArray[1] : null;
 
-                // Recalculate status using configured thresholds
-                const configuredStatus = getStatusFromHeight(latestRiverData.height);
+                const configuredStatus = getStatusFromHeight(
+                    latestRiverData.height,
+                    thresholdsRef.current
+                );
                 const updatedRiverData = {
                     ...latestRiverData,
                     status: configuredStatus,
                 };
 
-                // Forecast-based alert: only if one or more forecast values exceed thresholds, and only once per forecast update
-                const thresholds = getAlertThresholds();
-                const worstForecast =
-                  forecastData && forecastData.values?.length
-                    ? getWorstStatusFromForecast(forecastData.values, thresholds)
-                    : null;
-                if (
-                  worstForecast &&
-                  (worstForecast.status === "alert" || worstForecast.status === "critical")
-                ) {
-                  const forecastMoment = forecastData?.moment?.toISOString?.() ?? null;
-                  if (forecastMoment) {
-                    const syncState = await getSyncState().catch(() => null);
-                    if (syncState?.lastAlertedForecastMoment !== forecastMoment) {
-                      const statusLabels = {
-                        alert: "Alerta",
-                        critical: "Crítico",
-                        warning: "Advertencia",
-                        normal: "Normal",
-                      };
-                      await showAlertNotification(
-                        `🚨 ${statusLabels[worstForecast.status]} - Río Luján (pronóstico)`,
-                        `El pronóstico indica que uno o más valores superarán ${worstForecast.maxValue.toFixed(2)}m. Estado: ${statusLabels[worstForecast.status]}`,
-                        { height: worstForecast.maxValue, status: worstForecast.status }
-                      );
-                      setSyncState({ lastAlertedForecastMoment: forecastMoment }).catch(() => {});
-                    }
-                  }
-                }
-
-                // Sync thresholds to IndexedDB for service worker
-                setSyncState({ thresholds }).catch(() => {});
                 setRiverData(updatedRiverData);
                 riverDataRef.current = updatedRiverData;
                 setForecast(forecastData);
@@ -143,40 +111,28 @@ export default function Dashboard({
         });
     };
 
-    // Initialize: request permissions, register background sync, sync thresholds to IndexedDB
     useEffect(() => {
         setIsMounted(true);
-        requestNotificationPermission();
         if ("serviceWorker" in navigator) {
-            registerPeriodicSync();
+            subscribeToWebPush().catch(() => {});
         }
-        // Sync thresholds to IndexedDB so service worker can read them (no localStorage access)
-        setSyncState({ thresholds: getAlertThresholds() }).catch(() => {});
-        // If no initial data, fetch
         if (!initialRiverData) {
             fetchData();
         }
     }, []);
 
-    // Recalculate status with configured thresholds after mount (client-side only)
-    // This fixes hydration mismatch by using server status initially, then updating after mount
     useEffect(() => {
         if (!isMounted) return;
-        
-        // Only recalculate if we have initial data and status might differ
         if (riverData) {
-            const configuredStatus = getStatusFromHeight(riverData.height);
+            const configuredStatus = getStatusFromHeight(riverData.height, thresholds);
             if (configuredStatus !== riverData.status) {
                 const updatedData = { ...riverData, status: configuredStatus };
                 setRiverData(updatedData);
                 riverDataRef.current = updatedData;
             }
-            // Sync thresholds to IndexedDB for service worker
-            setSyncState({ thresholds: getAlertThresholds() }).catch(() => {});
         }
-    }, [isMounted]); // Only run once after mount
+    }, [isMounted, thresholds, riverData?.height]);
 
-    // Handle visibility changes
     useEffect(() => {
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
@@ -196,31 +152,26 @@ export default function Dashboard({
         };
     }, [isVisible]);
 
-    // Handle threshold updates separately
     useEffect(() => {
         const handleThresholdUpdate = () => {
-            const thresholds = getAlertThresholds();
-            setSyncState({ thresholds }).catch(() => {});
-            // Recalculate status when thresholds change
+            refreshAuth();
             if (riverDataRef.current) {
-                const newStatus = getStatusFromHeight(riverDataRef.current.height);
+                const newStatus = getStatusFromHeight(
+                    riverDataRef.current.height,
+                    thresholdsRef.current
+                );
                 const updatedData = { ...riverDataRef.current, status: newStatus };
                 setRiverData(updatedData);
                 riverDataRef.current = updatedData;
             }
         };
 
-        window.addEventListener('thresholdsUpdated', handleThresholdUpdate);
+        window.addEventListener("thresholdsUpdated", handleThresholdUpdate);
+        return () => window.removeEventListener("thresholdsUpdated", handleThresholdUpdate);
+    }, [refreshAuth]);
 
-        return () => {
-            window.removeEventListener('thresholdsUpdated', handleThresholdUpdate);
-        };
-    }, []);
-
-    // Update formatted timestamp
     useEffect(() => {
         if (!isMounted || !lastUpdate) return;
-        // if is today do not show weekday, day and month
         const today = new Date();
         if (lastUpdate.getDate() === today.getDate() && lastUpdate.getMonth() === today.getMonth() && lastUpdate.getFullYear() === today.getFullYear()) {
             setFormattedTimestamp(lastUpdate.toLocaleString("es-AR", {
@@ -242,7 +193,6 @@ export default function Dashboard({
         }
     }, [isMounted, lastUpdate]);
 
-    // Update time since update counter
     useEffect(() => {
         if (!isMounted || !lastUpdate) return;
 
@@ -258,7 +208,6 @@ export default function Dashboard({
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
             <main className="container mx-auto px-4 py-8 max-w-4xl">
-                {/* Header */}
                 <header className="text-center mb-6 relative">
                     <div className="absolute top-0 right-0">
                         <Link
@@ -297,17 +246,7 @@ export default function Dashboard({
                         Monitoreo en tiempo real de la altura del río con alertas de inundación
                     </p>
                     
-                    {/* Refresh Control */}
                     <div className="flex flex-col items-center gap-2 mb-4">
-                        {/* <button
-                            onClick={fetchData}
-                            disabled={isPending}
-                            className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 shadow-sm disabled:opacity-70"
-                            aria-label="Actualizar datos"
-                        >
-                            <span className={`inline-block ${isPending ? "animate-spin" : ""}`}>🔄</span>
-                            <span>{isPending ? "ACTUALIZANDO..." : "ACTUALIZAR AHORA"}</span>
-                        </button> */}
                         <div className="text-sm text-gray-500">
                             Última actualización: <span className="font-medium text-gray-800">{isMounted ? formattedTimestamp : "Cargando..."}</span>
                             {isMounted && (
@@ -319,7 +258,6 @@ export default function Dashboard({
                     </div>
                 </header>
 
-                {/* Main Content */}
                 <div className="space-y-8">
                     {error && (
                         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
@@ -342,8 +280,6 @@ export default function Dashboard({
                     />
                     
                     <WeatherCard data={weatherData} />
-                    
-                    {/* <FloodAlerts /> */}
 
                     <HistoricalMinMaxBox initialData={tideReadingsMinMax} />
                     
@@ -356,10 +292,9 @@ export default function Dashboard({
                     </div>
                 </div>
 
-                {/* Footer */}
                 <footer className="mt-12 text-center text-sm text-gray-500">
                     <p>Actualización automática cada 30 segundos</p>
-                    <p className="mt-2">Instala esta app en tu dispositivo para recibir notificaciones</p>
+                    <p className="mt-2">Instalá la app y permití notificaciones para alertas push del servidor</p>
                 </footer>
             </main>
 
@@ -368,4 +303,3 @@ export default function Dashboard({
         </div>
     );
 }
-
