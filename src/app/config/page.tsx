@@ -5,7 +5,12 @@ import Link from "next/link";
 import ThresholdSlider from "@/components/ThresholdSlider";
 import { useAuth } from "@/hooks/useAuth";
 import { DEFAULT_THRESHOLDS, type AlertThresholds } from "@/lib/thresholds";
-import { syncPushSubscriptionWithServer } from "@/utils/webPush";
+import {
+  getNotificationPermissionStatus,
+  subscribeToWebPushDetailed,
+  unsubscribeFromWebPush,
+  syncPushSubscriptionWithServer,
+} from "@/utils/webPush";
 
 export default function ConfigPage() {
   const {
@@ -30,9 +35,22 @@ export default function ConfigPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushFeedback, setPushFeedback] = useState<{
+    type: "success" | "error" | "info";
+    text: string;
+  } | null>(null);
+  const [permissionStatus, setPermissionStatus] = useState<
+    ReturnType<typeof getNotificationPermissionStatus>
+  >("default");
+
   useEffect(() => {
     setDraft(thresholds);
   }, [thresholds]);
+
+  useEffect(() => {
+    setPermissionStatus(getNotificationPermissionStatus());
+  }, []);
 
   const handleSave = async () => {
     if (!isLoggedIn) return;
@@ -52,6 +70,30 @@ export default function ConfigPage() {
   const handleReset = () => {
     setDraft({ ...thresholds });
     setIsSaved(false);
+  };
+
+  const handleActivatePush = async () => {
+    setPushLoading(true);
+    setPushFeedback(null);
+    const result = await subscribeToWebPushDetailed();
+    setPermissionStatus(getNotificationPermissionStatus());
+    setPushFeedback({
+      type: result.ok ? "success" : "error",
+      text: result.message,
+    });
+    setPushLoading(false);
+  };
+
+  const handleDeactivatePush = async () => {
+    setPushLoading(true);
+    setPushFeedback(null);
+    const result = await unsubscribeFromWebPush();
+    setPermissionStatus(getNotificationPermissionStatus());
+    setPushFeedback({
+      type: result.ok ? "info" : "error",
+      text: result.message,
+    });
+    setPushLoading(false);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -250,11 +292,54 @@ export default function ConfigPage() {
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
           <h3 className="font-semibold text-blue-900 mb-2">Notificaciones push</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Las alertas se envían desde el servidor según el pronóstico</li>
+          <p className="text-sm text-blue-800 mb-3">
+            Las alertas las envía el servidor según el <strong>pronóstico</strong>.
+            Cada celular o navegador debe registrarse una vez.
+          </p>
+          <p className="text-sm text-blue-900 mb-4">
+            Permiso del sistema:{" "}
+            <span className="font-medium">
+              {permissionStatus === "granted" && "✓ Concedido"}
+              {permissionStatus === "denied" && "✗ Bloqueado"}
+              {permissionStatus === "default" && "Sin definir (tocá Activar)"}
+              {permissionStatus === "unsupported" && "No soportado"}
+            </span>
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={handleActivatePush}
+              disabled={pushLoading || permissionStatus === "unsupported"}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg disabled:opacity-70 transition-colors"
+            >
+              {pushLoading ? "Procesando…" : "Activar notificaciones"}
+            </button>
+            <button
+              type="button"
+              onClick={handleDeactivatePush}
+              disabled={pushLoading}
+              className="px-6 py-3 bg-white border border-blue-300 text-blue-900 font-medium rounded-lg hover:bg-blue-100 disabled:opacity-70 transition-colors"
+            >
+              Desactivar en este dispositivo
+            </button>
+          </div>
+          {pushFeedback && (
+            <div
+              className={`mt-4 p-3 rounded-lg text-sm border ${
+                pushFeedback.type === "success"
+                  ? "bg-green-100 border-green-300 text-green-900"
+                  : pushFeedback.type === "error"
+                    ? "bg-red-100 border-red-300 text-red-900"
+                    : "bg-white border-blue-200 text-blue-900"
+              }`}
+            >
+              {pushFeedback.text}
+            </div>
+          )}
+          <ul className="text-sm text-blue-800 space-y-1 mt-4">
             <li>• Sin cuenta: umbrales globales del servidor</li>
             <li>• Con cuenta: tus umbrales en todos los dispositivos donde inicies sesión</li>
-            <li>• Cada dispositivo tiene su propia suscripción push</li>
+            <li>• Si actualizaste la app, usá Activar notificaciones o reinstalá la PWA</li>
           </ul>
         </div>
       </div>
