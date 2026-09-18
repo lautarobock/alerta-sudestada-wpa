@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { ObjectId, type WithoutId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import {
-  DEFAULT_THRESHOLDS,
+  getDefaultThresholds,
   type AlertThresholds,
   validateThresholds,
 } from "@/lib/thresholds";
@@ -86,7 +86,7 @@ export async function createUser(input: {
     passwordHash,
     firstName: input.firstName?.trim() || undefined,
     lastName: input.lastName?.trim() || undefined,
-    thresholds: { ...DEFAULT_THRESHOLDS },
+    thresholds: { ...getDefaultThresholds() },
     createdAt: now,
     updatedAt: now,
   };

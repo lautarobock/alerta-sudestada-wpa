@@ -50,7 +50,7 @@ export default function ConfigPage() {
   };
 
   const handleReset = () => {
-    setDraft(DEFAULT_THRESHOLDS);
+    setDraft({ ...thresholds });
     setIsSaved(false);
   };
 

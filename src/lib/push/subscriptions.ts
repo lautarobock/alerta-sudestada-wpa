@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
-import { DEFAULT_THRESHOLDS, type AlertThresholds } from "@/lib/thresholds";
+import { getDefaultThresholds, type AlertThresholds } from "@/lib/thresholds";
 import { findUserById } from "@/lib/auth/users";
 
 export interface PushSubscriptionKeys {
@@ -80,7 +80,7 @@ export async function resolveThresholdsForSubscription(
     const user = await findUserById(sub.userId.toString());
     if (user?.thresholds) return user.thresholds;
   }
-  return DEFAULT_THRESHOLDS;
+  return getDefaultThresholds();
 }
 
 export async function markSubscriptionNotified(

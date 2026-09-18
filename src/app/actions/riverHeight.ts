@@ -1,6 +1,7 @@
 'use server';
 
 import clientPromise from '@/lib/mongodb';
+import { getDefaultThresholds } from '@/lib/thresholds';
 import type { ForecastData, Forecast, ForecastType } from '@/types/forecast';
 
 export interface RiverHeightData {
@@ -37,18 +38,11 @@ export interface TideReadingsMinMax {
     firstReadingDate?: Date | null;
 }
 
-// Thresholds for alerts (in meters)
-const THRESHOLDS = {
-    normal: 0,
-    warning: 2.5,
-    alert: 3.0,
-    critical: 3.5
-};
-
 function getStatus(height: number): RiverHeightData["status"] {
-    if (height >= THRESHOLDS.critical) return "critical";
-    if (height >= THRESHOLDS.alert) return "alert";
-    if (height >= THRESHOLDS.warning) return "warning";
+    const t = getDefaultThresholds();
+    if (height >= t.critical) return "critical";
+    if (height >= t.alert) return "alert";
+    if (height >= t.warning) return "warning";
     return "normal";
 }
 

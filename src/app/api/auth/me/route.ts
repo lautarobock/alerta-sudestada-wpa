@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSessionFromCookies } from "@/lib/auth/session";
 import { findUserById, toPublicUser } from "@/lib/auth/users";
-import { DEFAULT_THRESHOLDS } from "@/lib/thresholds";
+import { getDefaultThresholds } from "@/lib/thresholds";
 
 export async function GET() {
   const session = await getSessionFromCookies();
   if (!session) {
     return NextResponse.json({
       user: null,
-      thresholds: DEFAULT_THRESHOLDS,
+      thresholds: getDefaultThresholds(),
     });
   }
 
@@ -16,7 +16,7 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({
       user: null,
-      thresholds: DEFAULT_THRESHOLDS,
+      thresholds: getDefaultThresholds(),
     });
   }
 

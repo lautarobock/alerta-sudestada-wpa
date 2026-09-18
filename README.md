@@ -120,11 +120,17 @@ You can customize the database name in `src/app/actions/riverHeight.ts`:
 const db = client.db('your-database-name'); // Change if needed
 ```
 
-### Alert Thresholds:
-- **Normal**: < 2.5m
-- **Warning**: ≥ 2.5m
-- **Alert**: ≥ 3.0m
-- **Critical**: ≥ 3.5m
+### Alert Thresholds (defaults)
+
+Global defaults are configured with environment variables (meters):
+
+```env
+DEFAULT_THRESHOLD_WARNING=2.5
+DEFAULT_THRESHOLD_ALERT=3.0
+DEFAULT_THRESHOLD_CRITICAL=3.5
+```
+
+They apply to anonymous users, Web Push evaluation, server-side river status, and new accounts. Logged-in users can override via `/config`. After changing env vars on Vercel, redeploy the app.
 
 ## Push webhook (external data writer)
 

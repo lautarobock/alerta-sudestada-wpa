@@ -4,11 +4,46 @@ export interface AlertThresholds {
   critical: number;
 }
 
+/** Used only as client-side placeholder until /api/auth/me loads */
 export const DEFAULT_THRESHOLDS: AlertThresholds = {
   warning: 2.5,
   alert: 3.0,
   critical: 3.5,
 };
+
+const FALLBACK_THRESHOLDS = DEFAULT_THRESHOLDS;
+
+function parseEnvThreshold(name: string): number | undefined {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/**
+ * Global default thresholds (anonymous users, push, new accounts).
+ * Override on Vercel via DEFAULT_THRESHOLD_WARNING | ALERT | CRITICAL (meters).
+ */
+export function getDefaultThresholds(): AlertThresholds {
+  const candidate: AlertThresholds = {
+    warning:
+      parseEnvThreshold("DEFAULT_THRESHOLD_WARNING") ??
+      FALLBACK_THRESHOLDS.warning,
+    alert:
+      parseEnvThreshold("DEFAULT_THRESHOLD_ALERT") ??
+      FALLBACK_THRESHOLDS.alert,
+    critical:
+      parseEnvThreshold("DEFAULT_THRESHOLD_CRITICAL") ??
+      FALLBACK_THRESHOLDS.critical,
+  };
+  if (validateThresholds(candidate)) {
+    return candidate;
+  }
+  console.warn(
+    "[thresholds] Invalid DEFAULT_THRESHOLD_* env values; using built-in fallback"
+  );
+  return { ...FALLBACK_THRESHOLDS };
+}
 
 export type AlertStatus = "normal" | "warning" | "alert" | "critical";
 
@@ -25,7 +60,7 @@ export function validateThresholds(thresholds: AlertThresholds): boolean {
 
 export function getStatusFromHeight(
   height: number,
-  thresholds: AlertThresholds = DEFAULT_THRESHOLDS
+  thresholds: AlertThresholds = getDefaultThresholds()
 ): AlertStatus {
   if (height >= thresholds.critical) return "critical";
   if (height >= thresholds.alert) return "alert";
@@ -35,7 +70,7 @@ export function getStatusFromHeight(
 
 export function getWorstStatusFromForecast(
   values: { value: number }[],
-  thresholds: AlertThresholds = DEFAULT_THRESHOLDS
+  thresholds: AlertThresholds = getDefaultThresholds()
 ): { status: AlertStatus; maxValue: number } | null {
   if (!values || values.length === 0) return null;
   const statusOrder = { normal: 0, warning: 1, alert: 2, critical: 3 } as const;
