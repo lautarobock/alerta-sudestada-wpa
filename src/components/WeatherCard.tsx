@@ -204,11 +204,11 @@ export default function WeatherCard({ data, windForecast = [] }: WeatherCardProp
             </div>
         </div>
 
-        {windForecast.length > 0 && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span>🌬️</span> Pronóstico de sudestada
-            </h3>
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <span>🌬️</span> Pronóstico de sudestada
+          </h3>
+          {windForecast.length > 0 ? (
             <div className="space-y-3">
               {windForecast.map((slot) => (
                 <div
@@ -233,8 +233,13 @@ export default function WeatherCard({ data, windForecast = [] }: WeatherCardProp
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="p-4 bg-green-50 rounded-lg border border-green-200 text-green-800 text-sm">
+              No hay alertas de viento sudeste en los próximos 5 días según el
+              pronóstico disponible (bloques de 3 h).
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
