@@ -1,11 +1,8 @@
 import bcrypt from "bcryptjs";
 import { ObjectId, type WithoutId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
-import {
-  getDefaultThresholds,
-  type AlertThresholds,
-  validateThresholds,
-} from "@/lib/thresholds";
+import { type AlertThresholds, validateThresholds } from "@/lib/thresholds";
+import { getDefaultThresholds } from "@/lib/thresholdsServer";
 
 export const USER_ROLES = ["user", "admin"] as const;
 export type UserRole = (typeof USER_ROLES)[number];

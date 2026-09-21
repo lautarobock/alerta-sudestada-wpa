@@ -1,7 +1,7 @@
 'use server';
 
 import clientPromise from '@/lib/mongodb';
-import { getDefaultThresholds } from '@/lib/thresholds';
+import { getDefaultThresholds } from '@/lib/thresholdsServer';
 import type { ForecastData, Forecast, ForecastType } from '@/types/forecast';
 
 export interface RiverHeightData {

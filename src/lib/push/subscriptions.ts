@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
-import { getDefaultThresholds, type AlertThresholds } from "@/lib/thresholds";
+import type { AlertThresholds } from "@/lib/thresholds";
+import { getDefaultThresholds } from "@/lib/thresholdsServer";
 import { findUserById } from "@/lib/auth/users";
 
 export interface PushSubscriptionKeys {

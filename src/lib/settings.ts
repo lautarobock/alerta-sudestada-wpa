@@ -1,51 +1,20 @@
+import "server-only";
+
 import clientPromise from "@/lib/mongodb";
+import { validateThresholds, type AlertThresholds } from "@/lib/thresholds";
 import {
-  DEFAULT_THRESHOLDS,
-  validateThresholds,
-  type AlertThresholds,
-} from "@/lib/thresholds";
+  SETTINGS_ID,
+  defaultSettingsDoc,
+  validateWindSettings,
+  type AppSettings,
+  type WindSettings,
+} from "@/lib/settingsDefaults";
 
-export const SETTINGS_ID = "global" as const;
-
-export interface WindSettings {
-  degMin: number;
-  degMax: number;
-  minKmh: number;
-}
-
-export interface AppSettings {
-  _id: typeof SETTINGS_ID;
-  river: AlertThresholds;
-  wind: WindSettings;
-  updatedAt: Date;
-}
-
-export const DEFAULT_WIND_SETTINGS: WindSettings = {
-  degMin: 90,
-  degMax: 180,
-  minKmh: 40,
-};
-
-function defaultSettingsDoc(): AppSettings {
-  return {
-    _id: SETTINGS_ID,
-    river: { ...DEFAULT_THRESHOLDS },
-    wind: { ...DEFAULT_WIND_SETTINGS },
-    updatedAt: new Date(),
-  };
-}
-
-export function validateWindSettings(wind: WindSettings): boolean {
-  return (
-    typeof wind.degMin === "number" &&
-    typeof wind.degMax === "number" &&
-    typeof wind.minKmh === "number" &&
-    wind.degMin >= 0 &&
-    wind.degMax <= 360 &&
-    wind.degMin <= wind.degMax &&
-    wind.minKmh >= 0
-  );
-}
+export type { AppSettings, WindSettings } from "@/lib/settingsDefaults";
+export {
+  SETTINGS_ID,
+  DEFAULT_WIND_SETTINGS,
+} from "@/lib/settingsDefaults";
 
 async function settingsCollection() {
   const client = await clientPromise;

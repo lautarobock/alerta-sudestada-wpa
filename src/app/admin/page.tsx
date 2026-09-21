@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import type { AlertThresholds } from "@/lib/thresholds";
-import type { WindSettings } from "@/lib/settings";
 import { DEFAULT_THRESHOLDS } from "@/lib/thresholds";
-import { DEFAULT_WIND_SETTINGS } from "@/lib/settings";
+import {
+  DEFAULT_WIND_SETTINGS,
+  type WindSettings,
+} from "@/lib/settingsDefaults";
 import type { FloodReport, FloodState } from "@/types/floodReport";
 
 interface AdminUserRow {

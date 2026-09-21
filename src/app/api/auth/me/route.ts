@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionFromCookies } from "@/lib/auth/session";
 import { findUserById, toPublicUser } from "@/lib/auth/users";
-import { getDefaultThresholds } from "@/lib/thresholds";
+import { getDefaultThresholds } from "@/lib/thresholdsServer";
 
 export async function GET() {
   const defaults = await getDefaultThresholds();

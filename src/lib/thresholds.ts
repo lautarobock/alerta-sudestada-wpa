@@ -1,5 +1,3 @@
-import { getAppSettings } from "@/lib/settings";
-
 export interface AlertThresholds {
   warning: number;
   alert: number;
@@ -14,23 +12,6 @@ export const DEFAULT_THRESHOLDS: AlertThresholds = {
 };
 
 const FALLBACK_THRESHOLDS = DEFAULT_THRESHOLDS;
-
-/**
- * Global default river thresholds (anonymous users, push, new accounts).
- * Stored in MongoDB `settings` document `global`.
- */
-export async function getDefaultThresholds(): Promise<AlertThresholds> {
-  try {
-    const settings = await getAppSettings();
-    if (validateThresholds(settings.river)) {
-      return settings.river;
-    }
-    console.warn("[thresholds] Invalid settings.river; using built-in fallback");
-  } catch (e) {
-    console.error("[thresholds] Failed to load settings:", e);
-  }
-  return { ...FALLBACK_THRESHOLDS };
-}
 
 export type AlertStatus = "normal" | "warning" | "alert" | "critical";
 

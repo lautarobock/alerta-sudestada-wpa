@@ -5,7 +5,6 @@ export type {
 
 export {
   DEFAULT_THRESHOLDS,
-  getDefaultThresholds,
   validateThresholds,
   getStatusFromHeight,
   getWorstStatusFromForecast,
