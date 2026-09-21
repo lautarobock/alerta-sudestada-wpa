@@ -72,11 +72,14 @@ Copy `.env.example` to `.env.local` and fill in values:
 ```env
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
 AUTH_SECRET=your-long-random-secret
+ADMIN_EMAILS=you@example.com
 VAPID_PUBLIC_KEY=...
 VAPID_PRIVATE_KEY=...
 VAPID_SUBJECT=mailto:you@example.com
 PUSH_WEBHOOK_SECRET=shared-secret-with-data-writer
 ```
+
+Emails in `ADMIN_EMAILS` (comma-separated) get the `admin` role and can open `/admin` to inspect registered users, push subscriptions, and flood reports. New accounts default to `user`.
 
 Generate VAPID keys:
 

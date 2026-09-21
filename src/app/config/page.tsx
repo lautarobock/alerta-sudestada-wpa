@@ -246,14 +246,29 @@ export default function ConfigPage() {
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-2">
             <p className="text-green-900 text-sm">
               Sesión: <span className="font-medium">{user.email}</span>
+              {user.role === "admin" && (
+                <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-full">
+                  admin
+                </span>
+              )}
             </p>
-            <button
-              type="button"
-              onClick={() => logout()}
-              className="text-sm text-green-800 underline hover:text-green-950"
-            >
-              Cerrar sesión
-            </button>
+            <div className="flex items-center gap-3">
+              {user.role === "admin" && (
+                <Link
+                  href="/admin"
+                  className="text-sm text-indigo-800 underline hover:text-indigo-950"
+                >
+                  Panel de administración
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="text-sm text-green-800 underline hover:text-green-950"
+              >
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         )}
 

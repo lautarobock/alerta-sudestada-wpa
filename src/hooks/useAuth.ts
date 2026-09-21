@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string;
   firstName?: string;
   lastName?: string;
+  role: "user" | "admin";
   thresholds: AlertThresholds;
 }
 
@@ -106,5 +107,6 @@ export function useAuth() {
     logout,
     saveThresholds,
     isLoggedIn: !!user,
+    isAdmin: user?.role === "admin",
   };
 }

@@ -2,6 +2,7 @@
 
 import clientPromise from '@/lib/mongodb';
 import type { FloodReport, FloodReportInput } from '@/types/floodReport';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 /**
  * Find the tide reading nearest in time to the given timestamp
@@ -138,6 +139,9 @@ export async function submitFloodReport(input: FloodReportInput): Promise<{ succ
 
 export async function getFloodReports(limit: number = 50): Promise<FloodReport[]> {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return [];
+
     const client = await clientPromise;
     const db = client.db('alerta-sudestada');
     const collection = db.collection('floodReports');

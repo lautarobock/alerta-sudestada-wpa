@@ -7,12 +7,16 @@ import {
   validateThresholds,
 } from "@/lib/thresholds";
 
+export const USER_ROLES = ["user", "admin"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
 export interface UserDocument {
   _id: ObjectId;
   email: string;
   passwordHash: string;
   firstName?: string;
   lastName?: string;
+  role?: UserRole;
   thresholds: AlertThresholds;
   createdAt: Date;
   updatedAt: Date;
@@ -23,7 +27,19 @@ export interface PublicUser {
   email: string;
   firstName?: string;
   lastName?: string;
+  role: UserRole;
   thresholds: AlertThresholds;
+}
+
+export interface AdminUserListItem {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: UserRole;
+  thresholds: AlertThresholds;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const BCRYPT_ROUNDS = 10;
@@ -37,12 +53,37 @@ export function validatePassword(password: string): boolean {
   return typeof password === "string" && password.length >= MIN_PASSWORD_LENGTH;
 }
 
+function adminEmailsFromEnv(): string[] {
+  return (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((value) => normalizeEmail(value))
+    .filter(Boolean);
+}
+
+export function isAdminEmail(email: string): boolean {
+  return adminEmailsFromEnv().includes(normalizeEmail(email));
+}
+
+export function getUserRole(
+  user: Pick<UserDocument, "email" | "role">
+): UserRole {
+  if (isAdminEmail(user.email) || user.role === "admin") return "admin";
+  return "user";
+}
+
+export function isAdminUser(
+  user: Pick<UserDocument, "email" | "role">
+): boolean {
+  return getUserRole(user) === "admin";
+}
+
 export function toPublicUser(doc: UserDocument): PublicUser {
   return {
     id: doc._id.toString(),
     email: doc.email,
     firstName: doc.firstName,
     lastName: doc.lastName,
+    role: getUserRole(doc),
     thresholds: doc.thresholds,
   };
 }
@@ -52,11 +93,23 @@ async function usersCollection() {
   return client.db("alerta-sudestada").collection<WithoutId<UserDocument>>("users");
 }
 
+async function syncStoredRole(user: UserDocument): Promise<UserDocument> {
+  const role = getUserRole(user);
+  if (user.role === role) return user;
+  const collection = await usersCollection();
+  await collection.updateOne(
+    { _id: user._id },
+    { $set: { role, updatedAt: new Date() } }
+  );
+  return { ...user, role };
+}
+
 export async function findUserByEmail(
   email: string
 ): Promise<UserDocument | null> {
   const collection = await usersCollection();
-  return collection.findOne({ email: normalizeEmail(email) });
+  const user = await collection.findOne({ email: normalizeEmail(email) });
+  return user ? syncStoredRole(user) : null;
 }
 
 export async function findUserById(
@@ -64,7 +117,23 @@ export async function findUserById(
 ): Promise<UserDocument | null> {
   if (!ObjectId.isValid(id)) return null;
   const collection = await usersCollection();
-  return collection.findOne({ _id: new ObjectId(id) });
+  const user = await collection.findOne({ _id: new ObjectId(id) });
+  return user ? syncStoredRole(user) : null;
+}
+
+export async function listUsers(): Promise<AdminUserListItem[]> {
+  const collection = await usersCollection();
+  const docs = await collection.find({}).sort({ createdAt: -1 }).toArray();
+  return docs.map((doc) => ({
+    id: doc._id.toString(),
+    email: doc.email,
+    firstName: doc.firstName,
+    lastName: doc.lastName,
+    role: getUserRole(doc),
+    thresholds: doc.thresholds,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  }));
 }
 
 export async function createUser(input: {
@@ -81,11 +150,13 @@ export async function createUser(input: {
   }
   const now = new Date();
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+  const role: UserRole = isAdminEmail(email) ? "admin" : "user";
   const doc = {
     email,
     passwordHash,
     firstName: input.firstName?.trim() || undefined,
     lastName: input.lastName?.trim() || undefined,
+    role,
     thresholds: { ...getDefaultThresholds() },
     createdAt: now,
     updatedAt: now,
