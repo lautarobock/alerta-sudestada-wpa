@@ -173,7 +173,7 @@ export async function resolveThresholdsForSubscription(
     const user = await findUserById(sub.userId.toString());
     if (user?.thresholds) return user.thresholds;
   }
-  return getDefaultThresholds();
+  return await getDefaultThresholds();
 }
 
 export async function markSubscriptionNotified(

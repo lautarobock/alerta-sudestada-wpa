@@ -77,7 +77,10 @@ VAPID_PUBLIC_KEY=...
 VAPID_PRIVATE_KEY=...
 VAPID_SUBJECT=mailto:you@example.com
 PUSH_WEBHOOK_SECRET=shared-secret-with-data-writer
+OPENWEATHER_API_KEY=your-openweathermap-app-id
 ```
+
+Use the same `OPENWEATHER_API_KEY` on Vercel and on the backend worker (forecast job).
 
 Emails in `ADMIN_EMAILS` (comma-separated) get the `admin` role and can open `/admin` to inspect registered users, push subscriptions, and flood reports. New accounts default to `user`.
 
@@ -123,17 +126,9 @@ You can customize the database name in `src/app/actions/riverHeight.ts`:
 const db = client.db('your-database-name'); // Change if needed
 ```
 
-### Alert Thresholds (defaults)
+### Alert thresholds (defaults)
 
-Global defaults are configured with environment variables (meters):
-
-```env
-DEFAULT_THRESHOLD_WARNING=2.5
-DEFAULT_THRESHOLD_ALERT=3.0
-DEFAULT_THRESHOLD_CRITICAL=3.5
-```
-
-They apply to anonymous users, Web Push evaluation, server-side river status, and new accounts. Logged-in users can override via `/config`. After changing env vars on Vercel, redeploy the app.
+Global defaults live in MongoDB collection `settings`, document `_id: "global"` (`river.warning|alert|critical` in meters, plus `wind` for sudestada forecast). Admins can edit them at `/admin`. They apply to anonymous users, Web Push evaluation, server-side river status, and new accounts. Logged-in users can override river thresholds via `/config`.
 
 ## Push webhook (external data writer)
 

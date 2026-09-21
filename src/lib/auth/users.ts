@@ -157,7 +157,7 @@ export async function createUser(input: {
     firstName: input.firstName?.trim() || undefined,
     lastName: input.lastName?.trim() || undefined,
     role,
-    thresholds: { ...getDefaultThresholds() },
+    thresholds: { ...(await getDefaultThresholds()) },
     createdAt: now,
     updatedAt: now,
   };

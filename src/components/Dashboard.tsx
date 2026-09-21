@@ -4,7 +4,9 @@ import { useEffect, useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import { getRiverHeight, getForecast, getHistoricalTideData, getTideReadingsMinMax, type RiverHeightData, type HistoricalTideData, type TideReadingsMinMax } from "@/app/actions/riverHeight";
 import { getWeather } from "@/app/actions/weather";
+import { getWindForecast } from "@/app/actions/windForecast";
 import { type WeatherData } from "@/types/weather";
+import type { WindForecastSlot } from "@/types/windForecast";
 import { type ForecastData } from "@/types/forecast";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +25,7 @@ interface DashboardProps {
     initialHistoricalData?: HistoricalTideData | null;
     initialWeatherData?: WeatherData | null;
     initialTideReadingsMinMax?: TideReadingsMinMax | null;
+    initialWindForecast?: WindForecastSlot[];
 }
 
 export default function Dashboard({ 
@@ -31,6 +34,7 @@ export default function Dashboard({
     initialHistoricalData,
     initialWeatherData,
     initialTideReadingsMinMax,
+    initialWindForecast = [],
 }: DashboardProps) {
     const { thresholds, refresh: refreshAuth, isAdmin } = useAuth();
 
@@ -44,6 +48,7 @@ export default function Dashboard({
     const [forecast, setForecast] = useState<ForecastData | null>(initialForecast || null);
     const [historicalData, setHistoricalData] = useState<HistoricalTideData | null>(initialHistoricalData || null);
     const [weatherData, setWeatherData] = useState<WeatherData | null>(initialWeatherData || null);
+    const [windForecast, setWindForecast] = useState<WindForecastSlot[]>(initialWindForecast);
     const [tideReadingsMinMax, setTideReadingsMinMax] = useState<TideReadingsMinMax | null>(initialTideReadingsMinMax || null);
     
     const [loading, setLoading] = useState(!initialRiverData);
@@ -68,12 +73,13 @@ export default function Dashboard({
         startTransition(async () => {
             try {
                 setError(null);
-                const [riverDataArray, forecastData, historicalTideData, currentWeatherData, minMaxData] = await Promise.all([
+                const [riverDataArray, forecastData, historicalTideData, currentWeatherData, minMaxData, windForecastData] = await Promise.all([
                     getRiverHeight(),
                     getForecast(),
                     getHistoricalTideData(),
                     getWeather(),
                     getTideReadingsMinMax(),
+                    getWindForecast(),
                 ]);
                 
                 if (!riverDataArray || riverDataArray.length === 0) {
@@ -97,6 +103,7 @@ export default function Dashboard({
                 setForecast(forecastData);
                 setHistoricalData(historicalTideData);
                 setWeatherData(currentWeatherData);
+                setWindForecast(windForecastData);
                 setTideReadingsMinMax(minMaxData);
                 
                 const now = new Date();
@@ -302,7 +309,7 @@ export default function Dashboard({
                         previousHeight={previousHeightRef.current}
                     />
                     
-                    <WeatherCard data={weatherData} />
+                    <WeatherCard data={weatherData} windForecast={windForecast} />
 
                     <HistoricalMinMaxBox initialData={tideReadingsMinMax} />
                     

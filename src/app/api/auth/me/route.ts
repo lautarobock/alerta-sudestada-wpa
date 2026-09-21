@@ -4,11 +4,12 @@ import { findUserById, toPublicUser } from "@/lib/auth/users";
 import { getDefaultThresholds } from "@/lib/thresholds";
 
 export async function GET() {
+  const defaults = await getDefaultThresholds();
   const session = await getSessionFromCookies();
   if (!session) {
     return NextResponse.json({
       user: null,
-      thresholds: getDefaultThresholds(),
+      thresholds: defaults,
     });
   }
 
@@ -16,7 +17,7 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({
       user: null,
-      thresholds: getDefaultThresholds(),
+      thresholds: defaults,
     });
   }
 

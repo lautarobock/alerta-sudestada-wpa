@@ -38,8 +38,8 @@ export interface TideReadingsMinMax {
     firstReadingDate?: Date | null;
 }
 
-function getStatus(height: number): RiverHeightData["status"] {
-    const t = getDefaultThresholds();
+async function getStatus(height: number): Promise<RiverHeightData["status"]> {
+    const t = await getDefaultThresholds();
     if (height >= t.critical) return "critical";
     if (height >= t.alert) return "alert";
     if (height >= t.warning) return "warning";
@@ -64,19 +64,22 @@ export async function getRiverHeight(): Promise<RiverHeightData[] | null> {
             return null;
         }
         
-        return latestReadings.map(latestReading => {
-            const height = latestReading.value ?? 0;
-            const timestamp = latestReading.moment
-                ? new Date(latestReading.moment).toISOString()
-                : new Date().toISOString();
-            return {
-                height,
-                unit: "m",
-                timestamp,
-                location: "San Fernando",
-                status: getStatus(height),
-            };
-        });
+        const results = await Promise.all(
+            latestReadings.map(async (latestReading) => {
+                const height = latestReading.value ?? 0;
+                const timestamp = latestReading.moment
+                    ? new Date(latestReading.moment).toISOString()
+                    : new Date().toISOString();
+                return {
+                    height,
+                    unit: "m",
+                    timestamp,
+                    location: "San Fernando",
+                    status: await getStatus(height),
+                };
+            })
+        );
+        return results;
     } catch (error) {
         console.error('Error fetching river height from MongoDB:', error);
         return null;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runPushCheck } from "@/lib/push/checkForecast";
+import { runWindPushCheck } from "@/lib/push/checkWindForecast";
 
 function verifyWebhookSecret(request: NextRequest): boolean {
   const secret = process.env.PUSH_WEBHOOK_SECRET;
@@ -15,11 +16,48 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await runPushCheck();
+    const [river, wind] = await Promise.allSettled([
+      runPushCheck(),
+      runWindPushCheck(),
+    ]);
+
+    if (river.status === "rejected") {
+      console.error("River push check error:", river.reason);
+    }
+    if (wind.status === "rejected") {
+      console.error("Wind push check error:", wind.reason);
+    }
+
+    const riverResult =
+      river.status === "fulfilled"
+        ? river.value
+        : {
+            forecastMoment: null,
+            subscriptionsChecked: 0,
+            notificationsSent: 0,
+            skipped: 0,
+            errors: 1,
+          };
+    const windResult =
+      wind.status === "fulfilled"
+        ? wind.value
+        : {
+            slotsChecked: 0,
+            notificationsSent: 0,
+            slotsMarkedNotified: 0,
+            errors: 1,
+          };
+
+    if (river.status === "rejected" && wind.status === "rejected") {
+      return NextResponse.json({ error: "Push check failed" }, { status: 500 });
+    }
+
     return NextResponse.json({
       success: true,
-      ...result,
-      notified: result.notificationsSent > 0,
+      ...riverResult,
+      wind: windResult,
+      notified:
+        riverResult.notificationsSent > 0 || windResult.notificationsSent > 0,
     });
   } catch (error) {
     console.error("Push check error:", error);

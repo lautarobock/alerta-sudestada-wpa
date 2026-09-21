@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import type { AlertThresholds } from "@/lib/thresholds";
+import type { WindSettings } from "@/lib/settings";
+import { DEFAULT_THRESHOLDS } from "@/lib/thresholds";
+import { DEFAULT_WIND_SETTINGS } from "@/lib/settings";
 import type { FloodReport, FloodState } from "@/types/floodReport";
 
 interface AdminUserRow {
@@ -80,6 +83,17 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const [cleaningOrphans, setCleaningOrphans] = useState(false);
+  const [settingsRiver, setSettingsRiver] = useState<AlertThresholds>({
+    ...DEFAULT_THRESHOLDS,
+  });
+  const [settingsWind, setSettingsWind] = useState<WindSettings>({
+    ...DEFAULT_WIND_SETTINGS,
+  });
+  const [settingsUpdatedAt, setSettingsUpdatedAt] = useState<string | null>(
+    null
+  );
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
 
   const loadOverview = useCallback(async () => {
     const res = await fetch("/api/admin/overview", { credentials: "include" });
@@ -88,11 +102,20 @@ export default function AdminPage() {
     setOverview(data);
   }, []);
 
+  const loadSettings = useCallback(async () => {
+    const res = await fetch("/api/admin/settings", { credentials: "include" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "No se pudo cargar configuración");
+    setSettingsRiver(data.river);
+    setSettingsWind(data.wind);
+    setSettingsUpdatedAt(data.updatedAt ?? null);
+  }, []);
+
   useEffect(() => {
     if (loading || !isAdmin) return;
     let cancelled = false;
     setFetching(true);
-    loadOverview()
+    Promise.all([loadOverview(), loadSettings()])
       .catch((err: unknown) => {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Error al cargar");
@@ -104,7 +127,31 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [loading, isAdmin, loadOverview]);
+  }, [loading, isAdmin, loadOverview, loadSettings]);
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    setSettingsMessage(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ river: settingsRiver, wind: settingsWind }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo guardar");
+      setSettingsRiver(data.river);
+      setSettingsWind(data.wind);
+      setSettingsUpdatedAt(data.updatedAt ?? null);
+      setSettingsMessage("Configuración guardada.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al guardar");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   const handleUnlinkOrphans = async () => {
     setCleaningOrphans(true);
@@ -187,6 +234,106 @@ export default function AdminPage() {
               Analíticas
             </Link>
           </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-2">
+            Configuración global
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Umbrales por defecto de marea (m) y detección de sudestada (viento).
+            {settingsUpdatedAt && (
+              <span className="block mt-1 text-gray-500">
+                Última actualización: {formatDate(settingsUpdatedAt)}
+              </span>
+            )}
+          </p>
+          {settingsMessage && (
+            <p className="text-sm text-green-700 mb-3">{settingsMessage}</p>
+          )}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-gray-800">Río (global)</h3>
+              {(["warning", "alert", "critical"] as const).map((key) => (
+                <label key={key} className="flex items-center gap-3 text-sm">
+                  <span className="w-24 capitalize text-gray-600">{key}</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className="border border-gray-300 rounded px-2 py-1 w-28"
+                    value={settingsRiver[key]}
+                    onChange={(e) =>
+                      setSettingsRiver({
+                        ...settingsRiver,
+                        [key]: Number(e.target.value),
+                      })
+                    }
+                  />
+                  <span className="text-gray-500">m</span>
+                </label>
+              ))}
+            </div>
+            <div className="space-y-3">
+              <h3 className="font-semibold text-gray-800">Sudestada (viento)</h3>
+              <label className="flex items-center gap-3 text-sm">
+                <span className="w-28 text-gray-600">deg mín</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="360"
+                  className="border border-gray-300 rounded px-2 py-1 w-28"
+                  value={settingsWind.degMin}
+                  onChange={(e) =>
+                    setSettingsWind({
+                      ...settingsWind,
+                      degMin: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+              <label className="flex items-center gap-3 text-sm">
+                <span className="w-28 text-gray-600">deg máx</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="360"
+                  className="border border-gray-300 rounded px-2 py-1 w-28"
+                  value={settingsWind.degMax}
+                  onChange={(e) =>
+                    setSettingsWind({
+                      ...settingsWind,
+                      degMax: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+              <label className="flex items-center gap-3 text-sm">
+                <span className="w-28 text-gray-600">vel. mín</span>
+                <input
+                  type="number"
+                  min="0"
+                  className="border border-gray-300 rounded px-2 py-1 w-28"
+                  value={settingsWind.minKmh}
+                  onChange={(e) =>
+                    setSettingsWind({
+                      ...settingsWind,
+                      minKmh: Number(e.target.value),
+                    })
+                  }
+                />
+                <span className="text-gray-500">km/h</span>
+              </label>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            disabled={savingSettings || fetching}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {savingSettings ? "Guardando…" : "Guardar configuración"}
+          </button>
         </div>
 
         {error && (

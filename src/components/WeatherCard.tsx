@@ -1,12 +1,15 @@
 "use client";
 
+import { windDirectionLabel, windSpeedKmh, formatWindSlotDate } from "@/lib/windDirection";
 import { WeatherData } from "@/types/weather";
+import type { WindForecastSlot } from "@/types/windForecast";
 
 interface WeatherCardProps {
   data: WeatherData | null;
+  windForecast?: WindForecastSlot[];
 }
 
-export default function WeatherCard({ data }: WeatherCardProps) {
+export default function WeatherCard({ data, windForecast = [] }: WeatherCardProps) {
   if (!data) return null;
 
   const { main, weather, wind, rain } = data;
@@ -200,6 +203,38 @@ export default function WeatherCard({ data }: WeatherCardProps) {
                 Presión: {main.pressure} hPa
             </div>
         </div>
+
+        {windForecast.length > 0 && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <span>🌬️</span> Pronóstico de sudestada
+            </h3>
+            <div className="space-y-3">
+              {windForecast.map((slot) => (
+                <div
+                  key={slot.dt.toISOString()}
+                  className="p-4 bg-amber-50 rounded-lg border border-amber-200"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-amber-900">
+                        {windDirectionLabel(slot.deg)} · {windSpeedKmh(slot.speed)} km/h
+                      </p>
+                      <p className="text-sm text-amber-700 mt-1 capitalize">
+                        {formatWindSlotDate(slot.dt)}
+                      </p>
+                    </div>
+                    {slot.gust !== undefined && (
+                      <p className="text-sm text-amber-800 whitespace-nowrap">
+                        Ráfagas ~{windSpeedKmh(slot.gust)} km/h
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
