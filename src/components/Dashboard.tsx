@@ -216,7 +216,7 @@ export default function Dashboard({
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
             <main className="container mx-auto px-4 py-8 max-w-4xl">
                 <header className="text-center mb-6 relative">
-                    <div className="absolute top-0 right-0 flex items-center gap-1">
+                    <div className="relative z-10 flex items-center justify-end gap-1 mb-1 sm:mb-0 sm:absolute sm:top-0 sm:right-0">
                         {isAdmin && (
                             <Link
                                 href="/admin"
@@ -268,8 +268,8 @@ export default function Dashboard({
                             </svg>
                         </Link>
                     </div>
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
-                        <img src="/icon-source.png" alt="Wave icon" className="w-10 h-10 inline-block" />
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
+                        <img src="/icon-source.png" alt="Wave icon" className="w-9 h-9 sm:w-10 sm:h-10 inline-block" />
                         Alerta Sudestada
                     </h1>
                     <p className="text-lg text-gray-600 mb-4">

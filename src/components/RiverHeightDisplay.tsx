@@ -126,9 +126,9 @@ export default function RiverHeightDisplay({
             <div
                 className={`p-6 rounded-xl border-2 ${config.borderColor} ${config.bgColor} shadow-lg`}
             >
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-2xl font-bold text-gray-800">Estado del Río</h2>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 shrink-0">
                         {/* Refresh button moved to Dashboard */}
                         <button
                             onClick={() => {
