@@ -86,13 +86,24 @@ export function migrateLegacyWindSettings(
   };
 }
 
+function coerceDirectionFlag(value: unknown): boolean {
+  if (value === true || value === 1) return true;
+  if (value === false || value === 0 || value == null) return false;
+  if (typeof value === "string") {
+    const s = value.trim().toLowerCase();
+    if (s === "true" || s === "1") return true;
+    if (s === "false" || s === "0" || s === "") return false;
+  }
+  return Boolean(value);
+}
+
 export function normalizeDirections(
   directions: boolean[] | undefined
 ): boolean[] {
   if (!directions || directions.length !== WIND_DIRECTION_COUNT) {
     return defaultWindDirectionsEastToSouth();
   }
-  return [...directions];
+  return directions.map(coerceDirectionFlag);
 }
 
 export function normalizeWindSettings(wind: unknown): WindSettings {

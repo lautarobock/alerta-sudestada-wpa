@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { syncPushSubscriptionWithServer } from "@/utils/webPush";
 import type { AlertThresholds } from "@/lib/thresholds";
 import { DEFAULT_THRESHOLDS } from "@/lib/thresholds";
 import {
@@ -51,6 +52,9 @@ export function useAuth() {
     setWindAlerts(
       data.user?.windAlerts ?? data.windDefaults ?? CLIENT_WIND_DEFAULTS
     );
+    if (data.user) {
+      syncPushSubscriptionWithServer().catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -74,6 +78,7 @@ export function useAuth() {
     setUser(data.user);
     setThresholds(data.user.thresholds);
     setWindAlerts(data.user.windAlerts);
+    await syncPushSubscriptionWithServer();
     return data.user as AuthUser;
   };
 
@@ -89,6 +94,7 @@ export function useAuth() {
     setUser(data.user);
     setThresholds(data.user.thresholds);
     setWindAlerts(data.user.windAlerts);
+    await syncPushSubscriptionWithServer();
     return data.user as AuthUser;
   };
 
@@ -130,6 +136,7 @@ export function useAuth() {
     if (!res.ok) throw new Error(data.error || "Error al guardar");
     setUser(data.user);
     setWindAlerts(data.user.windAlerts);
+    await syncPushSubscriptionWithServer();
     window.dispatchEvent(
       new CustomEvent("windAlertsUpdated", { detail: data.user.windAlerts })
     );

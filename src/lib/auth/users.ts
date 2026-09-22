@@ -219,14 +219,16 @@ export async function updateUserWindAlerts(
   userId: string,
   windAlerts: WindAlertsConfig
 ): Promise<UserDocument | null> {
-  if (!validateWindAlertsConfig(windAlerts)) {
+  const defaults = await getDefaultWindAlerts();
+  const normalized = normalizeWindAlertsConfig(windAlerts, defaults);
+  if (!validateWindAlertsConfig(normalized)) {
     throw new Error("INVALID_WIND_ALERTS");
   }
   if (!ObjectId.isValid(userId)) return null;
   const collection = await usersCollection();
   const result = await collection.findOneAndUpdate(
     { _id: new ObjectId(userId) },
-    { $set: { windAlerts, updatedAt: new Date() } },
+    { $set: { windAlerts: normalized, updatedAt: new Date() } },
     { returnDocument: "after" }
   );
   return result ?? null;

@@ -27,7 +27,7 @@ export async function resolveWindAlertsForSubscription(
   if (!sub.userId) return defaults;
 
   const user = await findUserById(sub.userId.toString());
-  if (!user?.windAlerts) return defaults;
+  if (!user) return defaults;
 
   return normalizeWindAlertsConfig(user.windAlerts, defaults);
 }
