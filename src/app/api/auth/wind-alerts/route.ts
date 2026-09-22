@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromCookies } from "@/lib/auth/session";
-import { updateUserThresholds, toPublicUserResolved } from "@/lib/auth/users";
-import type { AlertThresholds } from "@/lib/thresholds";
+import { toPublicUserResolved, updateUserWindAlerts } from "@/lib/auth/users";
+import type { WindAlertsConfig } from "@/lib/windAlerts";
 
 export async function PUT(request: NextRequest) {
   const session = await getSessionFromCookies();
@@ -11,20 +11,20 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const thresholds = body as AlertThresholds;
-    const user = await updateUserThresholds(session.userId, thresholds);
+    const windAlerts = body as WindAlertsConfig;
+    const user = await updateUserWindAlerts(session.userId, windAlerts);
     if (!user) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
     return NextResponse.json({ user: await toPublicUserResolved(user) });
   } catch (error) {
-    if (error instanceof Error && error.message === "INVALID_THRESHOLDS") {
+    if (error instanceof Error && error.message === "INVALID_WIND_ALERTS") {
       return NextResponse.json(
-        { error: "Umbrales inválidos" },
+        { error: "Configuración de viento inválida" },
         { status: 400 }
       );
     }
-    console.error("Update thresholds error:", error);
+    console.error("Update wind alerts error:", error);
     return NextResponse.json({ error: "Error al guardar" }, { status: 500 });
   }
 }

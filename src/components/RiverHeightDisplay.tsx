@@ -226,7 +226,10 @@ export default function RiverHeightDisplay({
                 });
                 
                 return (
-                    <div className="p-6 bg-white rounded-xl border-2 border-blue-200 shadow-lg">
+                    <div
+                        id="mareas"
+                        className="scroll-mt-6 p-6 bg-white rounded-xl border-2 border-blue-200 shadow-lg"
+                    >
                         <h2 className="text-2xl font-bold text-gray-800 mb-4">Pronóstico de Mareas</h2>
                         <div className="space-y-3">
                             {sortedForecasts.map((forecastItem, index) => {

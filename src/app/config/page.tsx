@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import ThresholdSlider from "@/components/ThresholdSlider";
+import WindDirectionPicker from "@/components/WindDirectionPicker";
 import { useAuth } from "@/hooks/useAuth";
 import { DEFAULT_THRESHOLDS, type AlertThresholds } from "@/lib/thresholds";
+import type { WindAlertsConfig } from "@/lib/windAlerts";
 import {
   getNotificationPermissionStatus,
   subscribeToWebPushDetailed,
@@ -22,10 +24,15 @@ export default function ConfigPage() {
     login,
     logout,
     saveThresholds,
+    saveWindAlerts,
+    windAlerts,
+    windDefaults,
   } = useAuth();
 
   const [draft, setDraft] = useState<AlertThresholds>(DEFAULT_THRESHOLDS);
+  const [windDraft, setWindDraft] = useState<WindAlertsConfig>(windDefaults);
   const [isSaved, setIsSaved] = useState(false);
+  const [isWindSaved, setIsWindSaved] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -49,6 +56,10 @@ export default function ConfigPage() {
   }, [thresholds]);
 
   useEffect(() => {
+    setWindDraft(windAlerts);
+  }, [windAlerts]);
+
+  useEffect(() => {
     setPermissionStatus(getNotificationPermissionStatus());
   }, []);
 
@@ -70,6 +81,26 @@ export default function ConfigPage() {
   const handleReset = () => {
     setDraft({ ...thresholds });
     setIsSaved(false);
+  };
+
+  const handleSaveWind = async () => {
+    if (!isLoggedIn) return;
+    try {
+      await saveWindAlerts(windDraft);
+      setIsWindSaved(true);
+      setTimeout(() => setIsWindSaved(false), 3000);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Error al guardar la configuración de viento."
+      );
+    }
+  };
+
+  const handleResetWind = () => {
+    setWindDraft({ ...windAlerts });
+    setIsWindSaved(false);
   };
 
   const handleActivatePush = async () => {
@@ -321,6 +352,91 @@ export default function ConfigPage() {
           )}
         </div>
 
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+            Alertas de viento
+          </h2>
+          {!isLoggedIn && (
+            <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm mb-4">
+              Solo lectura: defaults del servidor. Con cuenta podés personalizar
+              rumbos, umbrales y desactivar notificaciones de viento.
+            </p>
+          )}
+
+          {isLoggedIn && (
+            <label className="flex items-center gap-3 mb-6 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={windDraft.notificationsEnabled}
+                onChange={(e) =>
+                  setWindDraft({
+                    ...windDraft,
+                    notificationsEnabled: e.target.checked,
+                  })
+                }
+                className="h-5 w-5 rounded border-gray-300"
+              />
+              <span className="text-gray-800 font-medium">
+                Recibir notificaciones de viento (pronóstico)
+              </span>
+            </label>
+          )}
+
+          <ThresholdSlider
+            min={0}
+            max={120}
+            step={1}
+            unit="km/h"
+            values={isLoggedIn ? windDraft.speedKmh : windDefaults.speedKmh}
+            onChange={(speedKmh) =>
+              isLoggedIn && setWindDraft({ ...windDraft, speedKmh })
+            }
+            disabled={!isLoggedIn}
+            labels={{
+              warning: "Advertencia",
+              alert: "Alerta",
+              critical: "Crítico",
+            }}
+          />
+
+          <div className="mt-8">
+            <h3 className="font-semibold text-gray-800 mb-3 text-center">
+              Direcciones de origen del viento
+            </h3>
+            <WindDirectionPicker
+              directions={
+                isLoggedIn ? windDraft.directions : windDefaults.directions
+              }
+              onChange={(directions) =>
+                isLoggedIn && setWindDraft({ ...windDraft, directions })
+              }
+              disabled={!isLoggedIn}
+            />
+          </div>
+
+          <p className="text-sm text-gray-600 mt-4">
+            El widget y las notificaciones usan velocidad ≥ alerta en los rumbos
+            seleccionados. Las push solo se envían en nivel alerta o crítico.
+          </p>
+
+          {isLoggedIn && (
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={handleSaveWind}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors shadow-md"
+              >
+                {isWindSaved ? "✓ Guardado" : "Guardar viento"}
+              </button>
+              <button
+                onClick={handleResetWind}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-colors"
+              >
+                Restablecer
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
           <h3 className="font-semibold text-blue-900 mb-2">Notificaciones push</h3>
           <p className="text-sm text-blue-800 mb-3">
@@ -369,7 +485,8 @@ export default function ConfigPage() {
           )}
           <ul className="text-sm text-blue-800 space-y-1 mt-4">
             <li>• Sin cuenta: umbrales globales del servidor</li>
-            <li>• Con cuenta: tus umbrales en todos los dispositivos donde inicies sesión</li>
+            <li>• Con cuenta: tus umbrales de marea y viento en todos los dispositivos</li>
+            <li>• Podés desactivar solo las notificaciones de viento en Alertas de viento</li>
             <li>• Si actualizaste la app, usá Activar notificaciones o reinstalá la PWA</li>
           </ul>
         </div>

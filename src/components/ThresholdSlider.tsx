@@ -18,6 +18,8 @@ interface ThresholdSliderProps {
     critical: string;
   };
   disabled?: boolean;
+  /** Display unit (default meters for river height). */
+  unit?: "m" | "km/h";
 }
 
 export default function ThresholdSlider({
@@ -28,7 +30,11 @@ export default function ThresholdSlider({
   onChange,
   labels,
   disabled = false,
+  unit = "m",
 }: ThresholdSliderProps) {
+  const decimals = unit === "km/h" ? 0 : 1;
+  const formatVal = (n: number) =>
+    unit === "m" ? `${n.toFixed(decimals)}m` : `${n.toFixed(decimals)} km/h`;
   const [isDragging, setIsDragging] = useState<"warning" | "alert" | "critical" | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
 
@@ -203,7 +209,7 @@ export default function ThresholdSlider({
               <div className="absolute top-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
                 <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg">
                   <div className="font-semibold">{labels[type]}</div>
-                  <div className="text-center font-mono">{values[type].toFixed(1)}m</div>
+                  <div className="text-center font-mono">{formatVal(values[type])}</div>
                 </div>
               </div>
             </div>
@@ -215,19 +221,23 @@ export default function ThresholdSlider({
       <div className="flex justify-between mt-12 text-sm text-gray-600">
         <div className="text-left">
           <div className="font-semibold">Normal</div>
-          <div className="text-xs">&lt; {values.warning.toFixed(1)}m</div>
+          <div className="text-xs">&lt; {formatVal(values.warning)}</div>
         </div>
         <div className="text-center">
           <div className="font-semibold">Advertencia</div>
-          <div className="text-xs">{values.warning.toFixed(1)}m - {values.alert.toFixed(1)}m</div>
+          <div className="text-xs">
+            {formatVal(values.warning)} - {formatVal(values.alert)}
+          </div>
         </div>
         <div className="text-center">
           <div className="font-semibold">Alerta</div>
-          <div className="text-xs">{values.alert.toFixed(1)}m - {values.critical.toFixed(1)}m</div>
+          <div className="text-xs">
+            {formatVal(values.alert)} - {formatVal(values.critical)}
+          </div>
         </div>
         <div className="text-right">
           <div className="font-semibold">Crítico</div>
-          <div className="text-xs">≥ {values.critical.toFixed(1)}m</div>
+          <div className="text-xs">≥ {formatVal(values.critical)}</div>
         </div>
       </div>
     </div>

@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         : {
             slotsChecked: 0,
             notificationsSent: 0,
-            slotsMarkedNotified: 0,
+            skipped: 0,
             errors: 1,
           };
 

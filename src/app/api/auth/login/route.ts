@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyUserPassword, toPublicUser } from "@/lib/auth/users";
+import { verifyUserPassword, toPublicUserResolved } from "@/lib/auth/users";
 import {
   createSessionToken,
   sessionCookieOptions,
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
     cookieStore.set(sessionCookieOptions(token));
 
-    return NextResponse.json({ user: toPublicUser(user) });
+    return NextResponse.json({ user: await toPublicUserResolved(user) });
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json({ error: "Error al iniciar sesión" }, { status: 500 });

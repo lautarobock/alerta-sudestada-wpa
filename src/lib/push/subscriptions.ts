@@ -16,6 +16,7 @@ export interface PushSubscriptionDocument {
   userId?: ObjectId | null;
   userAgent?: string;
   lastNotifiedForecastMoment?: string | null;
+  notifiedWindSlotDts?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -195,4 +196,41 @@ export async function markSubscriptionNotified(
 
 export async function removeStaleSubscription(endpoint: string): Promise<void> {
   await deletePushSubscription(endpoint);
+}
+
+export function subscriptionNotifiedWindSlot(
+  sub: PushSubscriptionDocument,
+  dtIso: string
+): boolean {
+  return (sub.notifiedWindSlotDts ?? []).includes(dtIso);
+}
+
+export async function appendNotifiedWindSlot(
+  endpoint: string,
+  dtIso: string
+): Promise<void> {
+  const collection = await subscriptionsCollection();
+  const now = Date.now();
+  const sub = await collection.findOne({ endpoint });
+  const existing = sub?.notifiedWindSlotDts ?? [];
+  const pruned = existing.filter((iso) => {
+    const t = new Date(iso).getTime();
+    return Number.isFinite(t) && t > now;
+  });
+  if (pruned.includes(dtIso)) {
+    await collection.updateOne(
+      { endpoint },
+      { $set: { notifiedWindSlotDts: pruned, updatedAt: new Date() } }
+    );
+    return;
+  }
+  await collection.updateOne(
+    { endpoint },
+    {
+      $set: {
+        notifiedWindSlotDts: [...pruned, dtIso],
+        updatedAt: new Date(),
+      },
+    }
+  );
 }

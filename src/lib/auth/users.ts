@@ -3,6 +3,12 @@ import { ObjectId, type WithoutId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import { type AlertThresholds, validateThresholds } from "@/lib/thresholds";
 import { getDefaultThresholds } from "@/lib/thresholdsServer";
+import { getDefaultWindAlerts } from "@/lib/settingsServer";
+import {
+  normalizeWindAlertsConfig,
+  validateWindAlertsConfig,
+  type WindAlertsConfig,
+} from "@/lib/windAlerts";
 
 export const USER_ROLES = ["user", "admin"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
@@ -15,6 +21,7 @@ export interface UserDocument {
   lastName?: string;
   role?: UserRole;
   thresholds: AlertThresholds;
+  windAlerts?: WindAlertsConfig;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +33,7 @@ export interface PublicUser {
   lastName?: string;
   role: UserRole;
   thresholds: AlertThresholds;
+  windAlerts: WindAlertsConfig;
 }
 
 export interface AdminUserListItem {
@@ -74,7 +82,10 @@ export function isAdminUser(
   return getUserRole(user) === "admin";
 }
 
-export function toPublicUser(doc: UserDocument): PublicUser {
+export function toPublicUser(
+  doc: UserDocument,
+  windAlerts: WindAlertsConfig
+): PublicUser {
   return {
     id: doc._id.toString(),
     email: doc.email,
@@ -82,7 +93,21 @@ export function toPublicUser(doc: UserDocument): PublicUser {
     lastName: doc.lastName,
     role: getUserRole(doc),
     thresholds: doc.thresholds,
+    windAlerts,
   };
+}
+
+export async function resolveUserWindAlerts(
+  doc: UserDocument
+): Promise<WindAlertsConfig> {
+  const defaults = await getDefaultWindAlerts();
+  return normalizeWindAlertsConfig(doc.windAlerts, defaults);
+}
+
+export async function toPublicUserResolved(
+  doc: UserDocument
+): Promise<PublicUser> {
+  return toPublicUser(doc, await resolveUserWindAlerts(doc));
 }
 
 async function usersCollection() {
@@ -155,6 +180,7 @@ export async function createUser(input: {
     lastName: input.lastName?.trim() || undefined,
     role,
     thresholds: { ...(await getDefaultThresholds()) },
+    windAlerts: { ...(await getDefaultWindAlerts()) },
     createdAt: now,
     updatedAt: now,
   };
@@ -184,6 +210,23 @@ export async function updateUserThresholds(
   const result = await collection.findOneAndUpdate(
     { _id: new ObjectId(userId) },
     { $set: { thresholds, updatedAt: new Date() } },
+    { returnDocument: "after" }
+  );
+  return result ?? null;
+}
+
+export async function updateUserWindAlerts(
+  userId: string,
+  windAlerts: WindAlertsConfig
+): Promise<UserDocument | null> {
+  if (!validateWindAlertsConfig(windAlerts)) {
+    throw new Error("INVALID_WIND_ALERTS");
+  }
+  if (!ObjectId.isValid(userId)) return null;
+  const collection = await usersCollection();
+  const result = await collection.findOneAndUpdate(
+    { _id: new ObjectId(userId) },
+    { $set: { windAlerts, updatedAt: new Date() } },
     { returnDocument: "after" }
   );
   return result ?? null;

@@ -36,7 +36,14 @@ export default function Dashboard({
     initialTideReadingsMinMax,
     initialWindForecast = [],
 }: DashboardProps) {
-    const { thresholds, refresh: refreshAuth, isAdmin } = useAuth();
+    const {
+        thresholds,
+        refresh: refreshAuth,
+        isAdmin,
+        isLoggedIn,
+        windAlerts,
+        windDefaults,
+    } = useAuth();
 
     const [riverData, setRiverData] = useState<RiverHeightData | null>(initialRiverData?.[0] || null);
     const riverDataRef = useRef<RiverHeightData | null>(initialRiverData?.[0] || null);
@@ -119,6 +126,49 @@ export default function Dashboard({
     };
 
     useEffect(() => {
+        if (!isMounted) return;
+
+        const scrollSections = new Set(["clima", "mareas"]);
+
+        const scrollToSection = (sectionId: string) => {
+            document.getElementById(sectionId)?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        };
+
+        const scrollIfHash = () => {
+            const sectionId = window.location.hash.replace("#", "");
+            if (scrollSections.has(sectionId)) {
+                window.setTimeout(() => scrollToSection(sectionId), 150);
+            }
+        };
+
+        scrollIfHash();
+
+        const onHashChange = () => scrollIfHash();
+
+        const onServiceWorkerMessage = (event: MessageEvent) => {
+            const msg = event.data;
+            if (msg?.type !== "alerta-scroll" || typeof msg.section !== "string") return;
+            if (!scrollSections.has(msg.section)) return;
+            const hash = `#${msg.section}`;
+            if (window.location.hash !== hash) {
+                window.history.replaceState(null, "", hash);
+            }
+            window.setTimeout(() => scrollToSection(msg.section), 150);
+        };
+
+        window.addEventListener("hashchange", onHashChange);
+        navigator.serviceWorker?.addEventListener("message", onServiceWorkerMessage);
+
+        return () => {
+            window.removeEventListener("hashchange", onHashChange);
+            navigator.serviceWorker?.removeEventListener("message", onServiceWorkerMessage);
+        };
+    }, [isMounted]);
+
+    useEffect(() => {
         setIsMounted(true);
         if ("serviceWorker" in navigator) {
             subscribeToWebPush().catch(() => {});
@@ -175,6 +225,16 @@ export default function Dashboard({
 
         window.addEventListener("thresholdsUpdated", handleThresholdUpdate);
         return () => window.removeEventListener("thresholdsUpdated", handleThresholdUpdate);
+    }, [refreshAuth]);
+
+    useEffect(() => {
+        const handleWindAlertsUpdate = () => {
+            refreshAuth();
+            getWindForecast().then(setWindForecast).catch(() => {});
+        };
+        window.addEventListener("windAlertsUpdated", handleWindAlertsUpdate);
+        return () =>
+            window.removeEventListener("windAlertsUpdated", handleWindAlertsUpdate);
     }, [refreshAuth]);
 
     useEffect(() => {
@@ -309,7 +369,19 @@ export default function Dashboard({
                         previousHeight={previousHeightRef.current}
                     />
                     
-                    <WeatherCard data={weatherData} windForecast={windForecast} />
+                    <section
+                        id="clima"
+                        className="scroll-mt-6"
+                        aria-label="Clima y pronóstico de viento"
+                    >
+                        <WeatherCard
+                            data={weatherData}
+                            windForecast={windForecast}
+                            windSpeedThresholds={
+                                isLoggedIn ? windAlerts.speedKmh : windDefaults.speedKmh
+                            }
+                        />
+                    </section>
 
                     <HistoricalMinMaxBox initialData={tideReadingsMinMax} />
                     

@@ -1,10 +1,13 @@
 "use server";
 
+import { resolveWindAlertsForSession } from "@/lib/windAlertsServer";
+import { slotMatchesWindPrefs } from "@/lib/windAlerts";
 import clientPromise from "@/lib/mongodb";
 import type { WindForecastSlot } from "@/types/windForecast";
 
 export async function getWindForecast(): Promise<WindForecastSlot[]> {
   try {
+    const prefs = await resolveWindAlertsForSession();
     const client = await clientPromise;
     const db = client.db("alerta-sudestada");
     const now = new Date();
@@ -14,7 +17,7 @@ export async function getWindForecast(): Promise<WindForecastSlot[]> {
       .sort({ dt: 1 })
       .toArray();
 
-    return docs.map((doc) => ({
+    const slots = docs.map((doc) => ({
       dt: new Date(doc.dt),
       speed: doc.speed,
       deg: doc.deg,
@@ -22,6 +25,8 @@ export async function getWindForecast(): Promise<WindForecastSlot[]> {
       insertedAt: new Date(doc.insertedAt),
       notifiedAt: doc.notifiedAt ? new Date(doc.notifiedAt) : null,
     }));
+
+    return slots.filter((slot) => slotMatchesWindPrefs(slot, prefs, "alert"));
   } catch (error) {
     console.error("Error fetching wind forecast from MongoDB:", error);
     return [];

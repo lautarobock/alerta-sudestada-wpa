@@ -1,15 +1,25 @@
 "use client";
 
 import { windDirectionLabel, windSpeedKmh, formatWindSlotDate } from "@/lib/windDirection";
+import {
+  DEFAULT_WIND_SPEED_KMH,
+  getWindSpeedStatus,
+  type WindSpeedKmhThresholds,
+} from "@/lib/windAlerts";
 import { WeatherData } from "@/types/weather";
 import type { WindForecastSlot } from "@/types/windForecast";
 
 interface WeatherCardProps {
   data: WeatherData | null;
   windForecast?: WindForecastSlot[];
+  windSpeedThresholds?: WindSpeedKmhThresholds;
 }
 
-export default function WeatherCard({ data, windForecast = [] }: WeatherCardProps) {
+export default function WeatherCard({
+  data,
+  windForecast = [],
+  windSpeedThresholds = DEFAULT_WIND_SPEED_KMH,
+}: WeatherCardProps) {
   if (!data) return null;
 
   const { main, weather, wind, rain } = data;
@@ -210,28 +220,52 @@ export default function WeatherCard({ data, windForecast = [] }: WeatherCardProp
           </h3>
           {windForecast.length > 0 ? (
             <div className="space-y-3">
-              {windForecast.map((slot) => (
+              {windForecast.map((slot) => {
+                const kmh = windSpeedKmh(slot.speed);
+                const status = getWindSpeedStatus(kmh, windSpeedThresholds);
+                const isCritical = status === "critical";
+                return (
                 <div
                   key={slot.dt.toISOString()}
-                  className="p-4 bg-amber-50 rounded-lg border border-amber-200"
+                  className={`p-4 rounded-lg border ${
+                    isCritical
+                      ? "bg-red-50 border-red-200"
+                      : "bg-orange-50 border-orange-200"
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="font-semibold text-amber-900">
-                        {windDirectionLabel(slot.deg)} · {windSpeedKmh(slot.speed)} km/h
+                      <p
+                        className={`font-semibold ${
+                          isCritical ? "text-red-900" : "text-orange-900"
+                        }`}
+                      >
+                        {windDirectionLabel(slot.deg)} · {kmh} km/h
+                        <span className="ml-2 text-xs uppercase tracking-wide">
+                          {isCritical ? "Crítico" : "Alerta"}
+                        </span>
                       </p>
-                      <p className="text-sm text-amber-700 mt-1 capitalize">
+                      <p
+                        className={`text-sm mt-1 capitalize ${
+                          isCritical ? "text-red-700" : "text-orange-700"
+                        }`}
+                      >
                         {formatWindSlotDate(slot.dt)}
                       </p>
                     </div>
                     {slot.gust !== undefined && (
-                      <p className="text-sm text-amber-800 whitespace-nowrap">
+                      <p
+                        className={`text-sm whitespace-nowrap ${
+                          isCritical ? "text-red-800" : "text-orange-800"
+                        }`}
+                      >
                         Ráfagas ~{windSpeedKmh(slot.gust)} km/h
                       </p>
                     )}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           ) : (
             <p className="p-4 bg-green-50 rounded-lg border border-green-200 text-green-800 text-sm">

@@ -62,7 +62,7 @@ export async function runPushCheck(): Promise<PushCheckResult> {
     const payload = JSON.stringify({
       title: `🚨 ${label} - Río Luján (pronóstico)`,
       body: `El pronóstico indica que uno o más valores superarán ${worst.maxValue.toFixed(2)}m. Estado: ${label}`,
-      data: { height: worst.maxValue, status: worst.status },
+      data: { type: "river", height: worst.maxValue, status: worst.status },
     });
 
     try {

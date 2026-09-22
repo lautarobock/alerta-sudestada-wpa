@@ -9,6 +9,9 @@ import {
   DEFAULT_WIND_SETTINGS,
   type WindSettings,
 } from "@/lib/settingsDefaults";
+import { normalizeWindSettings } from "@/lib/windAlerts";
+import ThresholdSlider from "@/components/ThresholdSlider";
+import WindDirectionPicker from "@/components/WindDirectionPicker";
 import type { FloodReport, FloodState } from "@/types/floodReport";
 
 interface AdminUserRow {
@@ -109,7 +112,7 @@ export default function AdminPage() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "No se pudo cargar configuración");
     setSettingsRiver(data.river);
-    setSettingsWind(data.wind);
+    setSettingsWind(normalizeWindSettings(data.wind));
     setSettingsUpdatedAt(data.updatedAt ?? null);
   }, []);
 
@@ -276,56 +279,31 @@ export default function AdminPage() {
                 </label>
               ))}
             </div>
-            <div className="space-y-3">
-              <h3 className="font-semibold text-gray-800">Sudestada (viento)</h3>
-              <label className="flex items-center gap-3 text-sm">
-                <span className="w-28 text-gray-600">deg mín</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="360"
-                  className="border border-gray-300 rounded px-2 py-1 w-28"
-                  value={settingsWind.degMin}
-                  onChange={(e) =>
-                    setSettingsWind({
-                      ...settingsWind,
-                      degMin: Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-              <label className="flex items-center gap-3 text-sm">
-                <span className="w-28 text-gray-600">deg máx</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="360"
-                  className="border border-gray-300 rounded px-2 py-1 w-28"
-                  value={settingsWind.degMax}
-                  onChange={(e) =>
-                    setSettingsWind({
-                      ...settingsWind,
-                      degMax: Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-              <label className="flex items-center gap-3 text-sm">
-                <span className="w-28 text-gray-600">vel. mín</span>
-                <input
-                  type="number"
-                  min="0"
-                  className="border border-gray-300 rounded px-2 py-1 w-28"
-                  value={settingsWind.minKmh}
-                  onChange={(e) =>
-                    setSettingsWind({
-                      ...settingsWind,
-                      minKmh: Number(e.target.value),
-                    })
-                  }
-                />
-                <span className="text-gray-500">km/h</span>
-              </label>
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-800">
+                Viento (defaults globales)
+              </h3>
+              <ThresholdSlider
+                min={0}
+                max={120}
+                step={1}
+                unit="km/h"
+                values={settingsWind.speedKmh}
+                onChange={(speedKmh) =>
+                  setSettingsWind({ ...settingsWind, speedKmh })
+                }
+                labels={{
+                  warning: "Advertencia",
+                  alert: "Alerta",
+                  critical: "Crítico",
+                }}
+              />
+              <WindDirectionPicker
+                directions={settingsWind.directions}
+                onChange={(directions) =>
+                  setSettingsWind({ ...settingsWind, directions })
+                }
+              />
             </div>
           </div>
           <button

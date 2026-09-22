@@ -4,7 +4,7 @@ import {
   createUser,
   normalizeEmail,
   validatePassword,
-  toPublicUser,
+  toPublicUserResolved,
 } from "@/lib/auth/users";
 import {
   createSessionToken,
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
     cookieStore.set(sessionCookieOptions(token));
 
-    return NextResponse.json({ user: toPublicUser(user) });
+    return NextResponse.json({ user: await toPublicUserResolved(user) });
   } catch (error) {
     if (error instanceof Error && error.message === "EMAIL_EXISTS") {
       return NextResponse.json(

@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
 import { getSessionFromCookies } from "@/lib/auth/session";
-import { findUserById, toPublicUser } from "@/lib/auth/users";
+import { findUserById, toPublicUserResolved } from "@/lib/auth/users";
 import { getDefaultThresholds } from "@/lib/thresholdsServer";
+import { getDefaultWindAlerts } from "@/lib/settingsServer";
 
 export async function GET() {
-  const defaults = await getDefaultThresholds();
+  const [defaults, windDefaults] = await Promise.all([
+    getDefaultThresholds(),
+    getDefaultWindAlerts(),
+  ]);
   const session = await getSessionFromCookies();
   if (!session) {
     return NextResponse.json({
       user: null,
       thresholds: defaults,
+      windDefaults,
     });
   }
 
@@ -18,11 +23,13 @@ export async function GET() {
     return NextResponse.json({
       user: null,
       thresholds: defaults,
+      windDefaults,
     });
   }
 
   return NextResponse.json({
-    user: toPublicUser(user),
+    user: await toPublicUserResolved(user),
     thresholds: user.thresholds,
+    windDefaults,
   });
 }
