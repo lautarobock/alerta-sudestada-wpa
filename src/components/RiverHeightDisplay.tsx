@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ForecastType, type ForecastData } from "@/types/forecast";
-import { type RiverHeightData, type HistoricalTideData } from "@/app/actions/riverHeight";
+import { type RiverHeightData, type HistoricalTideData, type TideReadingsMinMax } from "@/app/actions/riverHeight";
 import TideChart from "@/components/TideChart";
+import HistoricalMinMaxBox from "@/components/HistoricalMinMaxBox";
+import { OverlayIconButton, OverlayModal } from "@/components/OverlayModal";
+import FloodReportForm from "@/components/FloodReportForm";
+
+type HistoryOverlay = "chart" | "readings" | null;
 
 const STATUS_CONFIG = {
     normal: {
@@ -44,6 +49,7 @@ interface RiverHeightDisplayProps {
     data: RiverHeightData | null;
     forecast: ForecastData | null;
     historicalData: HistoricalTideData | null;
+    tideReadingsMinMax?: TideReadingsMinMax | null;
     loading: boolean;
     previousHeight: number | null;
 }
@@ -52,12 +58,17 @@ export default function RiverHeightDisplay({
     data,
     forecast,
     historicalData,
+    tideReadingsMinMax,
     loading,
     previousHeight
 }: RiverHeightDisplayProps) {
     const [formattedReadingTimestamp, setFormattedReadingTimestamp] = useState<string>("");
     const [timeSinceReading, setTimeSinceReading] = useState<number>(0);
     const [isMounted, setIsMounted] = useState(false);
+    const [overlay, setOverlay] = useState<HistoryOverlay>(null);
+    const closeOverlay = useCallback(() => setOverlay(null), []);
+
+    const hasTideChart = Boolean(historicalData?.data?.length);
 
     // Update formatted reading timestamp when data changes
     useEffect(() => {
@@ -103,6 +114,7 @@ export default function RiverHeightDisplay({
     }
 
     const config = STATUS_CONFIG[data.status];
+    const highlightFloodReport = data.status !== "normal";
 
     function formatTimeSinceReading(seconds: number): string {
         const minutes = Math.floor(seconds / 60);
@@ -128,8 +140,26 @@ export default function RiverHeightDisplay({
             >
                 <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-2xl font-bold text-gray-800">Estado del Río</h2>
-                    <div className="flex items-center gap-3 shrink-0">
-                        {/* Refresh button moved to Dashboard */}
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                        {hasTideChart && (
+                            <OverlayIconButton
+                                label="Histórico de mareas"
+                                onClick={() => setOverlay("chart")}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18M7 15l4-4 3 3 6-8" />
+                                </svg>
+                            </OverlayIconButton>
+                        )}
+                        <OverlayIconButton
+                            label="Histórico de lecturas"
+                            onClick={() => setOverlay("readings")}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </OverlayIconButton>
+                        {!highlightFloodReport && <FloodReportForm variant="icon" />}
                         <button
                             onClick={() => {
                                 const event = new CustomEvent('openAlertLevelsModal');
@@ -203,6 +233,10 @@ export default function RiverHeightDisplay({
                         <span>4m+</span>
                     </div>
                 </div>
+
+                {highlightFloodReport && (
+                    <FloodReportForm variant="banner" status={data.status} />
+                )}
             </div>
 
             {/* Forecast Card */}
@@ -273,9 +307,23 @@ export default function RiverHeightDisplay({
                 );
             })()}
 
-            {/* Historical Chart */}
-            {historicalData && historicalData.data && historicalData.data.length > 0 && (
-                <TideChart data={historicalData.data} forecast={forecast} />
+            {overlay === "chart" && historicalData?.data && (
+                <OverlayModal
+                    title="Histórico de Mareas"
+                    wide
+                    onClose={closeOverlay}
+                >
+                    <TideChart data={historicalData.data} forecast={forecast} embedded />
+                </OverlayModal>
+            )}
+
+            {overlay === "readings" && (
+                <OverlayModal
+                    title="Histórico de lecturas"
+                    onClose={closeOverlay}
+                >
+                    <HistoricalMinMaxBox initialData={tideReadingsMinMax} embedded />
+                </OverlayModal>
             )}
         </div>
     );

@@ -4,6 +4,27 @@ import { useState, useEffect, FormEvent } from 'react';
 import { submitFloodReport } from '@/app/actions/floodReport';
 import { trackEvent } from '@/utils/analytics';
 import type { FloodState } from '@/types/floodReport';
+import { OverlayIconButton } from '@/components/OverlayModal';
+import type { AlertStatus } from '@/lib/thresholds';
+
+interface FloodReportFormProps {
+  variant?: 'button' | 'icon' | 'banner';
+  status?: AlertStatus;
+}
+
+function AlertTriangleIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 3h.01M10.29 4.86L2.82 17.14A2 2 0 004.53 20h14.94a2 2 0 001.71-3.01L13.71 4.86a2 2 0 00-3.42 0z" />
+    </svg>
+  );
+}
+
+const BANNER_STYLES: Record<Exclude<AlertStatus, 'normal'>, string> = {
+  warning: 'bg-amber-500 hover:bg-amber-600 text-white',
+  alert: 'bg-orange-600 hover:bg-orange-700 text-white',
+  critical: 'bg-red-600 hover:bg-red-700 text-white',
+};
 
 const FLOOD_STATES: { value: FloodState; label: string; description: string }[] = [
   { value: 'no-water', label: 'Sin agua', description: 'Puedes conducir normalmente' },
@@ -12,7 +33,7 @@ const FLOOD_STATES: { value: FloodState; label: string; description: string }[] 
   { value: 'evacuation', label: 'Evacuación', description: 'Nivel problemático de inundación' },
 ];
 
-export default function FloodReportForm() {
+export default function FloodReportForm({ variant = 'button', status = 'normal' }: FloodReportFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -121,17 +142,43 @@ export default function FloodReportForm() {
     }
   };
 
+  const openForm = () => {
+    setIsOpen(true);
+    trackEvent('flood_report_modal_opened');
+  };
+
+  const bannerStatus = status === 'normal' ? 'warning' : status;
+
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <button
-        onClick={() => {
-          setIsOpen(true);
-          trackEvent('flood_report_modal_opened');
-        }}
-        className="w-full max-w-2xl mx-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors"
-      >
-        📍 Reportar Estado de Inundación
-      </button>
+    <>
+      {variant === 'icon' && (
+        <OverlayIconButton label="Reportar estado de inundación" onClick={openForm}>
+          <AlertTriangleIcon />
+        </OverlayIconButton>
+      )}
+      {variant === 'banner' && (
+        <button
+          type="button"
+          onClick={openForm}
+          className={`mt-6 w-full px-4 py-3 rounded-xl font-semibold shadow-md flex items-center justify-center gap-2 transition-colors ${BANNER_STYLES[bannerStatus]}`}
+        >
+          <AlertTriangleIcon className="h-6 w-6 shrink-0" />
+          <span className="text-left">
+            <span className="block leading-tight">Reportar estado de inundación</span>
+            <span className="block text-sm font-normal opacity-90">¿Hay agua en la calle?</span>
+          </span>
+        </button>
+      )}
+      {variant === 'button' && (
+        <div className="w-full max-w-2xl mx-auto">
+          <button
+            onClick={openForm}
+            className="w-full max-w-2xl mx-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors"
+          >
+            📍 Reportar Estado de Inundación
+          </button>
+        </div>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -317,7 +364,7 @@ export default function FloodReportForm() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

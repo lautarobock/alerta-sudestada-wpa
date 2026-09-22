@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getTideReadingsMinMax, type TideReadingsMinMax, type TimeFilter } from "@/app/actions/riverHeight";
 
 interface HistoricalMinMaxBoxProps {
     initialData?: TideReadingsMinMax | null;
+    embedded?: boolean;
 }
 
 function formatMoment(d: Date): string {
@@ -20,12 +21,19 @@ function formatMoment(d: Date): string {
     });
 }
 
-export default function HistoricalMinMaxBox({ initialData }: HistoricalMinMaxBoxProps) {
+export default function HistoricalMinMaxBox({ initialData, embedded = false }: HistoricalMinMaxBoxProps) {
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('historic');
     const [data, setData] = useState<TideReadingsMinMax | null>(initialData || null);
     const [loading, setLoading] = useState(false);
+    const skipInitialFetch = useRef(Boolean(initialData));
 
     useEffect(() => {
+        if (skipInitialFetch.current && timeFilter === 'historic') {
+            skipInitialFetch.current = false;
+            return;
+        }
+        skipInitialFetch.current = false;
+
         const fetchData = async () => {
             setLoading(true);
             try {
@@ -43,8 +51,8 @@ export default function HistoricalMinMaxBox({ initialData }: HistoricalMinMaxBox
     if (!data || (!data.min && !data.max && data.periodsAbove3mCount === 0)) {
         if (loading) {
             return (
-                <div className="w-full max-w-2xl mx-auto">
-                    <div className="p-6 bg-white rounded-xl border-2 border-slate-200 shadow-lg">
+                <div className={embedded ? "w-full" : "w-full max-w-2xl mx-auto"}>
+                    <div className={embedded ? "p-2" : "p-6 bg-white rounded-xl border-2 border-slate-200 shadow-lg"}>
                         <div className="flex items-center justify-center p-8">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                         </div>
@@ -63,13 +71,15 @@ export default function HistoricalMinMaxBox({ initialData }: HistoricalMinMaxBox
     };
 
     return (
-        <div className="w-full max-w-2xl mx-auto">
-            <div className="p-6 bg-white rounded-xl border-2 border-slate-200 shadow-lg">
+        <div className={embedded ? "w-full" : "w-full max-w-2xl mx-auto"}>
+            <div className={embedded ? "" : "p-6 bg-white rounded-xl border-2 border-slate-200 shadow-lg"}>
                 <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            <span>📊</span> Histórico de lecturas
-                        </h2>
+                    <div className={`flex ${embedded ? "flex-col gap-3" : "items-center justify-between mb-2"}`}>
+                        {!embedded && (
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <span>📊</span> Histórico de lecturas
+                            </h2>
+                        )}
                         <div className="flex flex-wrap gap-2">
                             {(Object.keys(filterLabels) as TimeFilter[]).map((filter) => (
                                 <button

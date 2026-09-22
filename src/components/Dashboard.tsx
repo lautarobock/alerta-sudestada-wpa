@@ -16,8 +16,6 @@ import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import WeatherCard from "@/components/WeatherCard";
 import AlertLevelsModal from "@/components/AlertLevelsModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
-import FloodReportForm from "@/components/FloodReportForm";
-import HistoricalMinMaxBox from "@/components/HistoricalMinMaxBox";
 
 interface DashboardProps {
     initialRiverData?: RiverHeightData[] | null;
@@ -135,6 +133,9 @@ export default function Dashboard({
                 behavior: "smooth",
                 block: "start",
             });
+            if (sectionId === "clima") {
+                window.dispatchEvent(new CustomEvent("openWindForecastOverlay"));
+            }
         };
 
         const scrollIfHash = () => {
@@ -365,6 +366,7 @@ export default function Dashboard({
                         data={riverData}
                         forecast={forecast}
                         historicalData={historicalData}
+                        tideReadingsMinMax={tideReadingsMinMax}
                         loading={loading}
                         previousHeight={previousHeightRef.current}
                     />
@@ -382,10 +384,6 @@ export default function Dashboard({
                             }
                         />
                     </section>
-
-                    <HistoricalMinMaxBox initialData={tideReadingsMinMax} />
-                    
-                    <FloodReportForm />
 
                     <div className="w-full max-w-2xl mx-auto">
                         <a style={{ marginLeft: 'auto', marginRight: 'auto', width: '192px', display: 'block' }} href='https://cafecito.app/brew-o-matic' rel='noopener' target='_blank'>
