@@ -72,7 +72,7 @@ function WindCompass({ deg, markerId = "wind-arrow" }: { deg: number; markerId?:
 
       <circle cx="50" cy="50" r="3" fill="#3b82f6" />
 
-      <g transform={`rotate(${deg + 180} 50 50)`}>
+      <g transform={`rotate(${deg} 50 50)`}>
         <line
           x1="50"
           y1="50"
