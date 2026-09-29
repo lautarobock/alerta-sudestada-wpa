@@ -14,6 +14,7 @@ import { getStatusFromHeight } from "@/utils/alertThresholds";
 import { subscribeToWebPush } from "@/utils/webPush";
 import RiverHeightDisplay from "@/components/RiverHeightDisplay";
 import WeatherCard from "@/components/WeatherCard";
+import AboutSection from "@/components/AboutSection";
 import AlertLevelsModal from "@/components/AlertLevelsModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
@@ -64,6 +65,7 @@ export default function Dashboard({
     
     const [, startTransition] = useTransition();
     const [isMounted, setIsMounted] = useState(false);
+    const [aboutOpen, setAboutOpen] = useState(false);
     const isVisible = usePageVisibility();
     
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -301,6 +303,28 @@ export default function Dashboard({
                                 </svg>
                             </Link>
                         )}
+                        <button
+                            type="button"
+                            onClick={() => setAboutOpen(true)}
+                            className="text-gray-500 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-100"
+                            aria-label="Acerca de"
+                            title="Acerca de"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-6 w-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                            </svg>
+                        </button>
                         <Link
                             href="/config"
                             className="text-gray-500 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-100"
@@ -385,11 +409,6 @@ export default function Dashboard({
                         />
                     </section>
 
-                    <div className="w-full max-w-2xl mx-auto">
-                        <a style={{ marginLeft: 'auto', marginRight: 'auto', width: '192px', display: 'block' }} href='https://cafecito.app/brew-o-matic' rel='noopener' target='_blank'>
-                            <img srcSet='https://cdn.cafecito.app/imgs/buttons/button_6.png 1x, https://cdn.cafecito.app/imgs/buttons/button_6_2x.png 2x, https://cdn.cafecito.app/imgs/buttons/button_6_3.75x.png 3.75x' src='https://cdn.cafecito.app/imgs/buttons/button_6.png' alt='Invitame un café en cafecito.app' />
-                        </a>
-                    </div>
                 </div>
 
                 <footer className="mt-12 text-center text-sm text-gray-500">
@@ -398,6 +417,7 @@ export default function Dashboard({
                 </footer>
             </main>
 
+            {aboutOpen && <AboutSection onClose={() => setAboutOpen(false)} />}
             <AlertLevelsModal />
             <PWAInstallPrompt />
         </div>
