@@ -16,6 +16,17 @@ export interface FloodReport {
   createdAt: Date;
 }
 
+export interface FloodReportMapPoint {
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  timestamp: string;
+  state: FloodState;
+  estimatedLevelCm?: number;
+  tideHeight?: number;
+}
+
 export interface FloodReportInput {
   location: {
     latitude: number;

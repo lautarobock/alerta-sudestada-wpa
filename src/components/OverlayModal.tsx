@@ -37,11 +37,13 @@ export function OverlayIconButton({
 export function OverlayModal({
     title,
     wide,
+    fullscreen,
     onClose,
     children,
 }: {
     title: string;
     wide?: boolean;
+    fullscreen?: boolean;
     onClose: () => void;
     children: ReactNode;
 }) {
@@ -59,6 +61,25 @@ export function OverlayModal({
             window.removeEventListener("keydown", onKeyDown);
         };
     }, [onClose]);
+
+    if (fullscreen) {
+        return (
+            <div className="fixed inset-0 z-50 flex flex-col bg-white">
+                <div className="shrink-0 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{title}</h2>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-700 transition-colors text-2xl font-bold leading-none"
+                        aria-label="Cerrar"
+                    >
+                        ×
+                    </button>
+                </div>
+                <div className="flex-1 min-h-0">{children}</div>
+            </div>
+        );
+    }
 
     return (
         <div

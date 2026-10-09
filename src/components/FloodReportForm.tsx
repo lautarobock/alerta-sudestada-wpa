@@ -26,7 +26,7 @@ const BANNER_STYLES: Record<Exclude<AlertStatus, 'normal'>, string> = {
   critical: 'bg-red-600 hover:bg-red-700 text-white',
 };
 
-const FLOOD_STATES: { value: FloodState; label: string; description: string }[] = [
+export const FLOOD_STATES: { value: FloodState; label: string; description: string }[] = [
   { value: 'no-water', label: 'Sin agua', description: 'Puedes conducir normalmente' },
   { value: 'low-flood', label: 'Inundación baja', description: 'Hay agua pero puedes conducir' },
   { value: 'high-flood', label: 'Inundación alta', description: 'Hay tanta agua que no puedes conducir' },

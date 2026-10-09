@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { ForecastType, type ForecastData } from "@/types/forecast";
 import { type RiverHeightData, type HistoricalTideData, type TideReadingsMinMax } from "@/app/actions/riverHeight";
 import TideChart from "@/components/TideChart";
@@ -8,7 +9,9 @@ import HistoricalMinMaxBox from "@/components/HistoricalMinMaxBox";
 import { OverlayIconButton, OverlayModal } from "@/components/OverlayModal";
 import FloodReportForm from "@/components/FloodReportForm";
 
-type HistoryOverlay = "chart" | "readings" | null;
+const FloodReportsMap = dynamic(() => import("@/components/FloodReportsMap"), { ssr: false });
+
+type HistoryOverlay = "chart" | "readings" | "map" | null;
 
 const STATUS_CONFIG = {
     normal: {
@@ -160,6 +163,14 @@ export default function RiverHeightDisplay({
                             </svg>
                         </OverlayIconButton>
                         {!highlightFloodReport && <FloodReportForm variant="icon" />}
+                        <OverlayIconButton
+                            label="Mapa de reportes"
+                            onClick={() => setOverlay("map")}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                        </OverlayIconButton>
                         <button
                             onClick={() => {
                                 const event = new CustomEvent('openAlertLevelsModal');
@@ -323,6 +334,16 @@ export default function RiverHeightDisplay({
                     onClose={closeOverlay}
                 >
                     <HistoricalMinMaxBox initialData={tideReadingsMinMax} embedded />
+                </OverlayModal>
+            )}
+
+            {overlay === "map" && (
+                <OverlayModal
+                    title="Reportes de inundación"
+                    fullscreen
+                    onClose={closeOverlay}
+                >
+                    <FloodReportsMap />
                 </OverlayModal>
             )}
         </div>

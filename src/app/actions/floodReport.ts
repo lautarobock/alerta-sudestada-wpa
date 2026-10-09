@@ -1,7 +1,7 @@
 'use server';
 
 import clientPromise from '@/lib/mongodb';
-import type { FloodReport, FloodReportInput } from '@/types/floodReport';
+import type { FloodReport, FloodReportInput, FloodReportMapPoint, FloodState } from '@/types/floodReport';
 import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 /**
@@ -134,6 +134,53 @@ export async function submitFloodReport(input: FloodReportInput): Promise<{ succ
   } catch (error) {
     console.error('Error submitting flood report:', error);
     return { success: false, error: 'Failed to submit flood report' };
+  }
+}
+
+const MAP_FLOOD_STATES = new Set<FloodState>(['no-water', 'low-flood', 'high-flood', 'evacuation']);
+
+export async function getFloodReportsForMap(): Promise<FloodReportMapPoint[]> {
+  try {
+    const client = await clientPromise;
+    const db = client.db('alerta-sudestada');
+    const collection = db.collection('floodReports');
+
+    const reports = await collection
+      .find(
+        {},
+        {
+          projection: {
+            location: 1,
+            timestamp: 1,
+            state: 1,
+            estimatedLevelCm: 1,
+            tideHeight: 1,
+          },
+        }
+      )
+      .sort({ timestamp: -1 })
+      .toArray();
+
+    return reports.flatMap((doc) => {
+      const latitude = doc.location?.latitude;
+      const longitude = doc.location?.longitude;
+      if (typeof latitude !== 'number' || typeof longitude !== 'number') return [];
+      if (!MAP_FLOOD_STATES.has(doc.state)) return [];
+
+      const timestamp = doc.timestamp instanceof Date ? doc.timestamp : new Date(doc.timestamp);
+      if (Number.isNaN(timestamp.getTime())) return [];
+
+      return [{
+        location: { latitude, longitude },
+        timestamp: timestamp.toISOString(),
+        state: doc.state as FloodState,
+        estimatedLevelCm: typeof doc.estimatedLevelCm === 'number' ? doc.estimatedLevelCm : undefined,
+        tideHeight: typeof doc.tideHeight === 'number' ? doc.tideHeight : undefined,
+      }];
+    });
+  } catch (error) {
+    console.error('Error fetching flood reports for map:', error);
+    return [];
   }
 }
 
