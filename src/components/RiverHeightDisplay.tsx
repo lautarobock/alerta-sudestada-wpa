@@ -180,11 +180,10 @@ export default function RiverHeightDisplay({
                             aria-label="Mostrar niveles de alerta"
                         >
                             <span>ℹ️</span>
-                            <span>INFO</span>
                         </button>
                         <span className={`px-4 py-2 rounded-full ${config.color} text-white font-semibold flex items-center gap-2`}>
                             <span>{config.icon}</span>
-                            {config.label}
+                            {/* {config.label} */}
                         </span>
                     </div>
                 </div>
