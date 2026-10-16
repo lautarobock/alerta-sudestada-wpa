@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getSessionFromCookies } from "@/lib/auth/session";
-import { findUserById } from "@/lib/auth/users";
+import { findUserById, findUsersByIds } from "@/lib/auth/users";
 import { getDefaultWindAlerts } from "@/lib/settingsServer";
 import {
   normalizeWindAlertsConfig,
@@ -23,11 +23,28 @@ export async function resolveWindAlertsForSession(): Promise<WindAlertsConfig> {
 export async function resolveWindAlertsForSubscription(
   sub: PushSubscriptionDocument
 ): Promise<WindAlertsConfig> {
+  const prefs = await resolveWindAlertsForSubscriptions([sub]);
+  return prefs.get(sub.endpoint) ?? (await getDefaultWindAlerts());
+}
+
+/** One settings read and one users query for the whole push check. */
+export async function resolveWindAlertsForSubscriptions(
+  subs: PushSubscriptionDocument[]
+): Promise<Map<string, WindAlertsConfig>> {
   const defaults = await getDefaultWindAlerts();
-  if (!sub.userId) return defaults;
+  const users = await findUsersByIds(
+    subs
+      .map((sub) => sub.userId?.toString())
+      .filter((id): id is string => Boolean(id))
+  );
 
-  const user = await findUserById(sub.userId.toString());
-  if (!user) return defaults;
-
-  return normalizeWindAlertsConfig(user.windAlerts, defaults);
+  const prefs = new Map<string, WindAlertsConfig>();
+  for (const sub of subs) {
+    const user = sub.userId ? users.get(sub.userId.toString()) : undefined;
+    prefs.set(
+      sub.endpoint,
+      user ? normalizeWindAlertsConfig(user.windAlerts, defaults) : defaults
+    );
+  }
+  return prefs;
 }

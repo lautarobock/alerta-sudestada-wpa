@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
 import type { AlertThresholds } from "@/lib/thresholds";
 import { getDefaultThresholds } from "@/lib/thresholdsServer";
-import { findUserById } from "@/lib/auth/users";
+import { findUserById, findUsersByIds } from "@/lib/auth/users";
 
 export interface PushSubscriptionKeys {
   p256dh: string;
@@ -171,11 +171,27 @@ export async function unlinkOrphanPushSubscriptions(): Promise<number> {
 export async function resolveThresholdsForSubscription(
   sub: PushSubscriptionDocument
 ): Promise<AlertThresholds> {
-  if (sub.userId) {
-    const user = await findUserById(sub.userId.toString());
-    if (user?.thresholds) return user.thresholds;
+  const thresholds = await resolveThresholdsForSubscriptions([sub]);
+  return thresholds.get(sub.endpoint) ?? (await getDefaultThresholds());
+}
+
+/** One settings read and one users query for the whole push check. */
+export async function resolveThresholdsForSubscriptions(
+  subs: PushSubscriptionDocument[]
+): Promise<Map<string, AlertThresholds>> {
+  const defaults = await getDefaultThresholds();
+  const users = await findUsersByIds(
+    subs
+      .map((sub) => sub.userId?.toString())
+      .filter((id): id is string => Boolean(id))
+  );
+
+  const thresholds = new Map<string, AlertThresholds>();
+  for (const sub of subs) {
+    const user = sub.userId ? users.get(sub.userId.toString()) : undefined;
+    thresholds.set(sub.endpoint, user?.thresholds ?? defaults);
   }
-  return await getDefaultThresholds();
+  return thresholds;
 }
 
 export async function markSubscriptionNotified(

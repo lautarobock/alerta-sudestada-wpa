@@ -143,6 +143,19 @@ export async function findUserById(
   return user ? syncStoredRole(user) : null;
 }
 
+export async function findUsersByIds(
+  ids: string[]
+): Promise<Map<string, UserDocument>> {
+  const objectIds = [
+    ...new Set(ids.filter((id) => ObjectId.isValid(id))),
+  ].map((id) => new ObjectId(id));
+  if (objectIds.length === 0) return new Map();
+
+  const collection = await usersCollection();
+  const users = await collection.find({ _id: { $in: objectIds } }).toArray();
+  return new Map(users.map((user) => [user._id.toString(), user]));
+}
+
 export async function listUsers(): Promise<AdminUserListItem[]> {
   const collection = await usersCollection();
   const docs = await collection.find({}).sort({ createdAt: -1 }).toArray();

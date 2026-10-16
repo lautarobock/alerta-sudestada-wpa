@@ -7,7 +7,7 @@ import {
   getWindSlotStatus,
   slotMatchesWindPrefs,
 } from "@/lib/windAlerts";
-import { resolveWindAlertsForSubscription } from "@/lib/windAlertsServer";
+import { resolveWindAlertsForSubscriptions } from "@/lib/windAlertsServer";
 import clientPromise from "@/lib/mongodb";
 import type { WindForecastSlot } from "@/types/windForecast";
 import {
@@ -64,6 +64,7 @@ export async function runWindPushCheck(): Promise<WindPushCheckResult> {
   }
 
   const subs = await listPushSubscriptions();
+  const prefsByEndpoint = await resolveWindAlertsForSubscriptions(subs);
   let notificationsSent = 0;
   let skipped = 0;
   let errors = 0;
@@ -77,7 +78,11 @@ export async function runWindPushCheck(): Promise<WindPushCheckResult> {
         continue;
       }
 
-      const prefs = await resolveWindAlertsForSubscription(sub);
+      const prefs = prefsByEndpoint.get(sub.endpoint);
+      if (!prefs) {
+        skipped++;
+        continue;
+      }
 
       if (sub.userId && !prefs.notificationsEnabled) {
         skipped++;

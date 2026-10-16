@@ -2,7 +2,7 @@ import { getForecast } from "@/app/actions/riverHeight";
 import { getWorstStatusFromForecast } from "@/lib/thresholds";
 import {
   listPushSubscriptions,
-  resolveThresholdsForSubscription,
+  resolveThresholdsForSubscriptions,
   markSubscriptionNotified,
   removeStaleSubscription,
 } from "./subscriptions";
@@ -37,6 +37,7 @@ export async function runPushCheck(): Promise<PushCheckResult> {
 
   const forecastMoment = forecast.moment.toISOString();
   const subs = await listPushSubscriptions();
+  const thresholdsByEndpoint = await resolveThresholdsForSubscriptions(subs);
 
   let notificationsSent = 0;
   let skipped = 0;
@@ -48,7 +49,11 @@ export async function runPushCheck(): Promise<PushCheckResult> {
       continue;
     }
 
-    const thresholds = await resolveThresholdsForSubscription(sub);
+    const thresholds = thresholdsByEndpoint.get(sub.endpoint);
+    if (!thresholds) {
+      skipped++;
+      continue;
+    }
     const worst = getWorstStatusFromForecast(forecast.values, thresholds);
     if (
       !worst ||
