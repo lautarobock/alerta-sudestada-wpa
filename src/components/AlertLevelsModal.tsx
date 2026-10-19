@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { DEFAULT_THRESHOLDS } from "@/lib/thresholds";
+import { DEFAULT_THRESHOLDS, type AlertStatus } from "@/lib/thresholds";
 
 interface AlertThreshold {
+  status: AlertStatus;
   level: string;
   height: number;
   description: string;
@@ -22,9 +23,12 @@ export default function AlertLevelsModal() {
   const { thresholds: authThresholds } = useAuth();
   const thresholds = authThresholds ?? DEFAULT_THRESHOLDS;
   const [isOpen, setIsOpen] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<AlertStatus | null>(null);
 
   useEffect(() => {
-    const handleOpen = () => {
+    const handleOpen = (event: Event) => {
+      const detail = (event as CustomEvent<{ status?: AlertStatus }>).detail;
+      setCurrentStatus(detail?.status ?? null);
       setIsOpen(true);
     };
 
@@ -36,24 +40,28 @@ export default function AlertLevelsModal() {
 
   const THRESHOLDS: AlertThreshold[] = [
     {
+      status: "normal",
       level: "Normal",
       height: 0,
       description: "Nivel de río dentro de parámetros normales",
       color: "green",
     },
     {
+      status: "warning",
       level: "Advertencia",
       height: thresholds.warning,
       description: "El nivel del río está aumentando. Monitorear de cerca.",
       color: "yellow",
     },
     {
+      status: "alert",
       level: "Alerta",
       height: thresholds.alert,
       description: "Nivel elevado. Posible riesgo de inundación en zonas bajas.",
       color: "orange",
     },
     {
+      status: "critical",
       level: "Crítico",
       height: thresholds.critical,
       description: "Nivel crítico. Evacuación recomendada en zonas de riesgo.",
@@ -95,22 +103,37 @@ export default function AlertLevelsModal() {
         </div>
         
         <div className="p-6 space-y-3">
-          {THRESHOLDS.map((threshold) => (
-            <div
-              key={threshold.level}
-              className={`p-4 rounded-lg border-2 ${colorClasses[threshold.color as keyof typeof colorClasses]}`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-lg">{threshold.level}</h3>
-                <span className="font-mono font-bold">
-                  {threshold.height > 0 
-                    ? `≥ ${threshold.height.toFixed(1)}m` 
-                    : `< ${thresholds.warning.toFixed(1)}m`}
-                </span>
+          {THRESHOLDS.map((threshold) => {
+            const isCurrent = threshold.status === currentStatus;
+            return (
+              <div
+                key={threshold.level}
+                className={isCurrent ? "-mx-2 rounded-xl bg-gray-200 p-2" : undefined}
+              >
+                <div
+                  aria-current={isCurrent ? "true" : undefined}
+                  className={`p-4 rounded-lg border-2 ${colorClasses[threshold.color as keyof typeof colorClasses]}`}
+                >
+                  <div className="flex items-center justify-between mb-2 gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <h3 className="font-semibold text-lg">{threshold.level}</h3>
+                      {isCurrent && (
+                        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-700 text-white">
+                          Actual
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-mono font-bold shrink-0">
+                      {threshold.height > 0
+                        ? `≥ ${threshold.height.toFixed(1)}m`
+                        : `< ${thresholds.warning.toFixed(1)}m`}
+                    </span>
+                  </div>
+                  <p className="text-sm opacity-90">{threshold.description}</p>
+                </div>
               </div>
-              <p className="text-sm opacity-90">{threshold.description}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="px-6 pb-6">

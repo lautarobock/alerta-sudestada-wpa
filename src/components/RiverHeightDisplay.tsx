@@ -173,18 +173,19 @@ export default function RiverHeightDisplay({
                         </OverlayIconButton>
                         <button
                             onClick={() => {
-                                const event = new CustomEvent('openAlertLevelsModal');
-                                window.dispatchEvent(event);
+                                window.dispatchEvent(
+                                    new CustomEvent("openAlertLevelsModal", {
+                                        detail: { status: data.status },
+                                    })
+                                );
                             }}
-                            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-1.5 text-sm"
-                            aria-label="Mostrar niveles de alerta"
+                            className={`px-4 py-2 rounded-full ${config.color} text-white font-semibold flex items-center gap-2 text-sm hover:brightness-95 transition`}
+                            aria-label="Mostrar detalles de los niveles de alerta"
                         >
-                            <span>ℹ️</span>
-                        </button>
-                        <span className={`px-4 py-2 rounded-full ${config.color} text-white font-semibold flex items-center gap-2`}>
                             <span>{config.icon}</span>
-                            {/* {config.label} */}
-                        </span>
+                            {config.label}
+                        </button>
+                   
                     </div>
                 </div>
 
