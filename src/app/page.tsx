@@ -1,17 +1,15 @@
-import { getRiverHeight, getForecast, getHistoricalTideData, getTideReadingsMinMax } from "@/app/actions/riverHeight";
-import { getWeather } from "@/app/actions/weather";
-import { getWindForecast } from "@/app/actions/windForecast";
+import { loadDashboard } from "@/app/actions/dashboard";
 import Dashboard from "@/components/Dashboard";
 
 export default async function Home() {
-    const [initialData, initialForecast, initialHistoricalData, weatherData, initialMinMax, initialWindForecast] = await Promise.all([
-        getRiverHeight(),
-        getForecast(),
-        getHistoricalTideData(),
-        getWeather(),
-        getTideReadingsMinMax(),
-        getWindForecast(),
-    ]);
+    const {
+        river: initialData,
+        forecast: initialForecast,
+        historical: initialHistoricalData,
+        weather: weatherData,
+        minMax: initialMinMax,
+        wind: initialWindForecast,
+    } = await loadDashboard();
 
     return (
         <Dashboard

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useTransition, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { getRiverHeight, getForecast, getHistoricalTideData, getTideReadingsMinMax, type RiverHeightData, type HistoricalTideData, type TideReadingsMinMax } from "@/app/actions/riverHeight";
-import { getWeather } from "@/app/actions/weather";
+import { loadDashboard } from "@/app/actions/dashboard";
+import { type RiverHeightData, type HistoricalTideData, type TideReadingsMinMax } from "@/app/actions/riverHeight";
 import { getWindForecast } from "@/app/actions/windForecast";
 import { type WeatherData } from "@/types/weather";
 import type { WindForecastSlot } from "@/types/windForecast";
-import { type ForecastData } from "@/types/forecast";
+import { type ForecastData, type ForecastType } from "@/types/forecast";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { useAuth } from "@/hooks/useAuth";
 import { getStatusFromHeight } from "@/utils/alertThresholds";
@@ -17,6 +17,26 @@ import WeatherCard from "@/components/WeatherCard";
 import AboutSection from "@/components/AboutSection";
 import AlertLevelsModal from "@/components/AlertLevelsModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+
+/** Open tabs poll this often. The CDN caches /api/live for the same window. */
+const LIVE_POLL_MS = 5 * 60 * 1000;
+
+interface LiveForecast {
+    moment: string;
+    values: { date: string; mode: ForecastType; value: number }[];
+}
+
+function reviveForecast(forecast: LiveForecast | null): ForecastData | null {
+    if (!forecast) return null;
+    return {
+        moment: new Date(forecast.moment),
+        values: forecast.values.map((value) => ({
+            date: new Date(value.date),
+            mode: value.mode,
+            value: value.value,
+        })),
+    };
+}
 
 interface DashboardProps {
     initialRiverData?: RiverHeightData[] | null;
@@ -63,7 +83,6 @@ export default function Dashboard({
     const [timeSinceUpdate, setTimeSinceUpdate] = useState<number>(0);
     const [formattedTimestamp, setFormattedTimestamp] = useState<string>("");
     
-    const [, startTransition] = useTransition();
     const [isMounted, setIsMounted] = useState(false);
     const [aboutOpen, setAboutOpen] = useState(false);
     const isVisible = usePageVisibility();
@@ -71,59 +90,69 @@ export default function Dashboard({
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const previousHeightRef = useRef<number | null>(initialRiverData?.[1]?.height || null);
     const thresholdsRef = useRef(thresholds);
+    const skipNextLiveFetchRef = useRef(true);
 
     useEffect(() => {
         thresholdsRef.current = thresholds;
     }, [thresholds]);
 
-    const fetchData = async () => {
-        startTransition(async () => {
-            try {
-                setError(null);
-                const [riverDataArray, forecastData, historicalTideData, currentWeatherData, minMaxData, windForecastData] = await Promise.all([
-                    getRiverHeight(),
-                    getForecast(),
-                    getHistoricalTideData(),
-                    getWeather(),
-                    getTideReadingsMinMax(),
-                    getWindForecast(),
-                ]);
-                
-                if (!riverDataArray || riverDataArray.length === 0) {
-                    throw new Error("No se encontraron datos del río");
-                }
-                
-                const latestRiverData = riverDataArray[0];
-                const secondLatestRiverData = riverDataArray.length > 1 ? riverDataArray[1] : null;
+    const applyRiver = useCallback((riverDataArray: RiverHeightData[]) => {
+        const latestRiverData = riverDataArray[0];
+        const secondLatestRiverData = riverDataArray.length > 1 ? riverDataArray[1] : null;
+        const updatedRiverData = {
+            ...latestRiverData,
+            status: getStatusFromHeight(latestRiverData.height, thresholdsRef.current),
+        };
+        setRiverData(updatedRiverData);
+        riverDataRef.current = updatedRiverData;
+        previousHeightRef.current = secondLatestRiverData?.height || null;
+        const now = new Date();
+        setLastUpdate(now);
+        setTimeSinceUpdate(0);
+    }, []);
 
-                const configuredStatus = getStatusFromHeight(
-                    latestRiverData.height,
-                    thresholdsRef.current
-                );
-                const updatedRiverData = {
-                    ...latestRiverData,
-                    status: configuredStatus,
-                };
-
-                setRiverData(updatedRiverData);
-                riverDataRef.current = updatedRiverData;
-                setForecast(forecastData);
-                setHistoricalData(historicalTideData);
-                setWeatherData(currentWeatherData);
-                setWindForecast(windForecastData);
-                setTideReadingsMinMax(minMaxData);
-                
-                const now = new Date();
-                setLastUpdate(now);
-                setTimeSinceUpdate(0);
-                previousHeightRef.current = secondLatestRiverData?.height || null;
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "Error desconocido");
-            } finally {
-                setLoading(false);
+    const loadInitial = useCallback(async () => {
+        try {
+            setError(null);
+            const snapshot = await loadDashboard();
+            if (!snapshot.river || snapshot.river.length === 0) {
+                throw new Error("No se encontraron datos del río");
             }
-        });
-    };
+            applyRiver(snapshot.river);
+            setForecast(snapshot.forecast);
+            setHistoricalData(snapshot.historical);
+            setWeatherData(snapshot.weather);
+            setWindForecast(snapshot.wind);
+            setTideReadingsMinMax(snapshot.minMax);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Error desconocido");
+        } finally {
+            setLoading(false);
+        }
+    }, [applyRiver]);
+
+    const refreshLive = useCallback(async () => {
+        try {
+            setError(null);
+            const response = await fetch("/api/live");
+            if (!response.ok) {
+                throw new Error("No se pudieron actualizar los datos del río");
+            }
+            const body = (await response.json()) as {
+                river: RiverHeightData[] | null;
+                forecast: LiveForecast | null;
+            };
+            if (!body.river || body.river.length === 0) {
+                throw new Error("No se encontraron datos del río");
+            }
+            applyRiver(body.river);
+            setForecast(reviveForecast(body.forecast));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Error desconocido");
+        } finally {
+            setLoading(false);
+        }
+    }, [applyRiver]);
 
     useEffect(() => {
         if (!isMounted) return;
@@ -177,9 +206,9 @@ export default function Dashboard({
             subscribeToWebPush().catch(() => {});
         }
         if (!initialRiverData) {
-            fetchData();
+            loadInitial();
         }
-    }, []);
+    }, [initialRiverData, loadInitial]);
 
     useEffect(() => {
         if (!isMounted) return;
@@ -200,8 +229,12 @@ export default function Dashboard({
         }
 
         if (isVisible) {
-            fetchData();
-            intervalRef.current = setInterval(fetchData, 30000);
+            if (skipNextLiveFetchRef.current) {
+                skipNextLiveFetchRef.current = false;
+            } else {
+                refreshLive();
+            }
+            intervalRef.current = setInterval(refreshLive, LIVE_POLL_MS);
         }
 
         return () => {
@@ -210,7 +243,7 @@ export default function Dashboard({
                 intervalRef.current = null;
             }
         };
-    }, [isVisible]);
+    }, [isVisible, refreshLive]);
 
     useEffect(() => {
         const handleThresholdUpdate = () => {
@@ -378,7 +411,10 @@ export default function Dashboard({
                         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
                             <p className="text-red-700">Error: {error}</p>
                             <button
-                                onClick={fetchData}
+                                onClick={() => {
+                                    if (riverDataRef.current) refreshLive();
+                                    else loadInitial();
+                                }}
                                 className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                             >
                                 Reintentar
@@ -412,7 +448,7 @@ export default function Dashboard({
                 </div>
 
                 <footer className="mt-12 text-center text-sm text-gray-500">
-                    <p>Actualización automática cada 30 segundos</p>
+                    <p>La altura y el pronóstico se actualizan cada 5 minutos</p>
                     <p className="mt-2">Instalá la app y permití notificaciones para alertas push del servidor</p>
                 </footer>
             </main>
